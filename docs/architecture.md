@@ -1,0 +1,82 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww29200\viewh18380\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 INNGEST CRON (every 4 hours)\
+        \uc0\u8595 \
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474          SIGNAL COLLECTION LAYER         \u9474 \
+  \uc0\u9474   Apify: Twitter + Google Trends +       \u9474 \
+  \uc0\u9474   Reddit + YouTube Trending              \u9474 \
+  \uc0\u9474   Google News RSS (free)                 \u9474 \
+  \uc0\u9474   Previous cycle data (Supabase)         \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9516 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+                    \uc0\u8595 \
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474        VIRAL PREDICTION AGENT            \u9474 \
+  \uc0\u9474                                          \u9474 \
+  \uc0\u9474   Feature Engineering (deterministic)    \u9474 \
+  \uc0\u9474   \u9500 \u9472 \u9472  Cross-platform presence score      \u9474 \
+  \uc0\u9474   \u9500 \u9472 \u9472  Velocity ratio (vs prev cycle)     \u9474 \
+  \uc0\u9474   \u9500 \u9472 \u9472  Acceleration score                 \u9474 \
+  \uc0\u9474   \u9500 \u9472 \u9472  Publication gap compression        \u9474 \
+  \uc0\u9474   \u9500 \u9472 \u9472  Sentiment polarity (VADER)         \u9474 \
+  \uc0\u9474   \u9500 \u9472 \u9472  Time-of-day multiplier             \u9474 \
+  \uc0\u9474   \u9492 \u9472 \u9472  Category multiplier               \u9474 \
+  \uc0\u9474                     \u8595                     \u9474 \
+  \uc0\u9474   Weighted Linear Scoring Model          \u9474 \
+  \uc0\u9474   (\u8594  XGBoost after 30 days)             \u9474 \
+  \uc0\u9474                     \u8595                     \u9474 \
+  \uc0\u9474   LLM Validator \'97 Claude Haiku           \u9474 \
+  \uc0\u9474   (40\'9660% band only)                     \u9474 \
+  \uc0\u9474                     \u8595                     \u9474 \
+  \uc0\u9474   Tier Assignment (1/2/3) or Reject      \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9516 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+                    \uc0\u8595  (50%+ only)\
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474          BRAND SAFETY FILTER             \u9474 \
+  \uc0\u9474   Keyword blocklist \u8594  Llama Guard 3      \u9474 \
+  \uc0\u9474   \u8594  Claude Haiku brand check             \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9516 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+                    \uc0\u8595  (safe topics only)\
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474        CONTENT GENERATION                \u9474 \
+  \uc0\u9474   Classify (Haiku) \u8594                      \u9474 \
+  \uc0\u9474   Full Package (Sonnet 4.5):             \u9474 \
+  \uc0\u9474   Summary | Article | Social | Script    \u9474 \
+  \uc0\u9474   IAB tags | Schema blocks               \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9516 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+                    \uc0\u8595 \
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474        MEDIA GENERATION (tiered)         \u9474 \
+  \uc0\u9474   Tier 1: Kling video + ElevenLabs       \u9474 \
+  \uc0\u9474   Tier 2\'963: YouTube/Vimeo embed search   \u9474 \
+  \uc0\u9474   All tiers: Flux 1.1 Pro thumbnail      \u9474 \
+  \uc0\u9474   FFmpeg: video assembly + text overlay  \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9516 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+                    \uc0\u8595 \
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474          SUPABASE PUBLISH                \u9474 \
+  \uc0\u9474   DB record | Storage (images/video)     \u9474 \
+  \uc0\u9474   Sitemap update | IndexNow ping         \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9516 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9516 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+               \uc0\u8595               \u8595 \
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488   \u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474   DELIVERY      \u9474   \u9474   DISTRIBUTION     \u9474 \
+  \uc0\u9474   Next.js ISR   \u9474   \u9474   AGENT            \u9474 \
+  \uc0\u9474   + Ad Manager  \u9474   \u9474   Facebook (Graph) \u9474 \
+  \uc0\u9474   Expo App      \u9474   \u9474   Instagram (Graph)\u9474 \
+  \uc0\u9474   + AdMob       \u9474   \u9474   Twitter (Apify)  \u9474 \
+  \uc0\u9474   OneSignal     \u9474   \u9474   YouTube (API v3) \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496   \u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 \
+               \uc0\u8595 \
+  \uc0\u9484 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9488 \
+  \uc0\u9474     LEARNING LOOP (async, weekly)        \u9474 \
+  \uc0\u9474   Compare predicted vs actual virality   \u9474 \
+  \uc0\u9474   Haiku generates weight adjustment      \u9474 \
+  \uc0\u9474   report \u8594  your email (Resend)           \u9474 \
+  \uc0\u9474   Admin panel: tune model weights        \u9474 \
+  \uc0\u9492 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9472 \u9496 }
