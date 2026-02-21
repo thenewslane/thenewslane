@@ -1,0 +1,25 @@
+{
+  "name": "@platform/ui",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./web":    "./web/index.ts",
+    "./mobile": "./mobile/index.ts"
+  },
+  "peerDependencies": {
+    "react":            "^18",
+    "react-dom":        "^18",
+    "react-native":     "^0.73",
+    "react-native-webview": "*"
+  },
+  "peerDependenciesMeta": {
+    "react-dom":            { "optional": true },
+    "react-native":         { "optional": true },
+    "react-native-webview": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/react":        "^18",
+    "@types/react-dom":    "^18",
+    "typescript":          "^5.7.3"
+  }
+}

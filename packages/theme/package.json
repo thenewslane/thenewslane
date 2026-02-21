@@ -4,6 +4,10 @@
   "description": "Visual design tokens — single source of truth for all platform colours, typography, and spacing",
   "private": true,
   "type": "module",
+  "main": "./theme.config.ts",
+  "exports": {
+    ".": "./theme.config.ts"
+  },
   "scripts": {
     "generate": "tsx generate-tokens.ts",
     "watch":    "tsx watch.ts"
