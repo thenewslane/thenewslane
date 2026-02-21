@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js
+apps/web/.next/
+apps/web/out/
+
+# Environment files (contain secrets)
+.env.local
+.env*.local
+# Note: .env is committed intentionally (parsed from RTF template, no raw secrets committed to prod)
+
+# Build outputs
+dist/
+build/
+
+# Package manager
+.npm/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
