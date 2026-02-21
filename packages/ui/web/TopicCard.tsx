@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useCallback } from 'react';
 import type { TrendingTopic } from '@platform/types';
 import { CategoryBadge }    from './CategoryBadge';
