@@ -21,9 +21,9 @@ import httpx
 
 try:
     import replicate
-except ImportError:
-    # Mock for testing environments where replicate may not be available
-    replicate = None
+except Exception:
+    # replicate may be unavailable or incompatible with this Python version
+    replicate = None  # type: ignore[assignment]
 
 from config.settings import settings
 from utils.logger import get_logger

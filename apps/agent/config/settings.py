@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     # ── Webhook / ISR ────────────────────────────────────────────────────────
     webhook_secret: str = Field(default="", description="Shared secret for /api/revalidate calls")
     revalidate_secret: str = Field(default="", description="ISR revalidation secret (= webhook_secret if not set)")
+    slack_webhook_url: str = Field(default="", description="Slack incoming webhook URL for pipeline notifications")
 
     # ── Pipeline tuning ───────────────────────────────────────────────────────
     pipeline_cron: str = Field(default="0 */4 * * *", description="Inngest CRON expression")
