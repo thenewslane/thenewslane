@@ -1,0 +1,54 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "framework":      "nextjs",
+  "buildCommand":   "next build",
+  "outputDirectory": ".next",
+  "installCommand": "cd ../.. && npm install",
+
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+
+  "env": {
+    "PUBLICATION_NAME":              "@publication-name",
+    "PUBLICATION_DOMAIN":            "@publication-domain",
+    "AUTHOR_NAME":                   "@author-name",
+    "AUTHOR_PHOTO_URL":              "@author-photo-url",
+    "SUPABASE_SERVICE_ROLE_KEY":     "@supabase-service-role-key",
+    "RESEND_API_KEY":                "@resend-api-key",
+    "REVALIDATE_SECRET":             "@revalidate-secret",
+    "INDEXNOW_KEY":                  "@indexnow-key"
+  },
+
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SUPABASE_URL":       "@next-public-supabase-url",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY":  "@next-public-supabase-anon-key",
+      "NEXT_PUBLIC_PUBLICATION_NAME":   "@publication-name",
+      "NEXT_PUBLIC_PUBLICATION_DOMAIN": "@publication-domain"
+    }
+  },
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key":   "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key":   "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key":   "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}
