@@ -1,0 +1,55 @@
+/* =============================================================================
+   tokens.css — Generated CSS custom properties
+   Source: packages/theme/theme.config.ts
+   Generated: 2026-02-21T03:47:14.028Z
+   DO NOT EDIT — run `npm run generate-tokens` to regenerate.
+   ============================================================================= */
+
+:root {
+  --color-primary:   #AD2D37;
+  --color-secondary: #1E3A5F;
+  --color-accent:    #E05A1E;
+  --color-link:      #2563EB;
+  --color-background-light: #FFFFFF;
+  --color-background-dark:  #0D0D0E;
+  --color-text-primary-light: #1A1A1A;
+  --color-text-primary-dark: #F5F5F7;
+  --color-text-secondary-light: #4B4B4B;
+  --color-text-secondary-dark: #A0A0A8;
+  --color-text-muted-light: #8B8B9A;
+  --color-text-muted-dark: #6B6B7A;
+  --color-card-light: #FFFFFF;
+  --color-card-dark:  #1A1A2E;
+  --color-ad-slot: #F0F0F5;
+
+  --radius-small: 4px;
+  --radius-medium: 8px;
+  --radius-large: 16px;
+
+  --font-heading: "Georgia", "Times New Roman", Times, serif;
+  --font-body:    "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  --color-category-technology: #2980B9;
+  --color-category-entertainment: #8E44AD;
+  --color-category-sports: #E67E22;
+  --color-category-politics: #C0392B;
+  --color-category-business-finance: #27AE60;
+  --color-category-health-science: #16A085;
+  --color-category-lifestyle: #F39C12;
+  --color-category-world-news: #2C3E50;
+  --color-category-culture-arts: #D35400;
+  --color-category-environment: #1ABC9C;
+
+  --color-viral-tier-1: #E63946;
+  --color-viral-tier-2: #F4A261;
+  --color-viral-tier-3: #2A9D8F;
+}

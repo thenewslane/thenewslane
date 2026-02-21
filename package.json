@@ -1,0 +1,16 @@
+{
+  "name": "platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "generate-tokens": "npm run generate --workspace=packages/theme",
+    "watch-tokens":    "npm run watch   --workspace=packages/theme"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

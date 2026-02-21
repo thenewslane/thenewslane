@@ -1,0 +1,14 @@
+{
+  "name": "@platform/types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript interfaces for the trending news platform",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

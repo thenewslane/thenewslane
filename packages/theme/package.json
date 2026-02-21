@@ -1,0 +1,18 @@
+{
+  "name": "@platform/theme",
+  "version": "1.0.0",
+  "description": "Visual design tokens — single source of truth for all platform colours, typography, and spacing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "tsx generate-tokens.ts",
+    "watch":    "tsx watch.ts"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
