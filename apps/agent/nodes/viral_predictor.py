@@ -1,25 +1,19 @@
 """
 nodes/viral_predictor.py — LangGraph node: viral prediction scoring.
 
-Applies the weighted linear model (→ XGBoost after 30 days of labelled data):
-  cross_platform_score × w1
-  + velocity_ratio × w2
-  + acceleration_score × w3
-  + publication_gap_score × w4
-  + sentiment_polarity × w5
-  × time_of_day_multiplier
-  × category_multiplier
-  = weighted_score
+Delegates to ViralPredictionNode which applies:
+  FeatureEngineer → LinearScorer → LLMValidator (40-60 band) → tier assignment
+  → trending_topics + viral_predictions DB rows
 
-Topics scoring 40-60% are passed to the Claude Haiku LLM validator.
-Topics are then assigned Tier 1 (≥0.75) / Tier 2 (≥0.45) / Tier 3 (<0.45).
-Tier 3 topics can be rejected if below a minimum threshold from config.
+Topics scoring < 50 are rejected here and excluded from the returned list.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from nodes.collection_node import RawTopic
+from nodes.viral_prediction_node import ViralPredictionNode
 from utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -27,36 +21,41 @@ log = get_logger(__name__)
 
 def predict_virality(state: dict[str, Any]) -> dict[str, Any]:
     """
-    LangGraph node — score each raw signal group and produce candidate topics.
+    LangGraph node — score each raw topic and produce candidate topics.
+
+    Reads from state:
+        batch_id     (str)           — current batch identifier
+        raw_signals  (list[RawTopic]) — output from collect_signals node
 
     Updates state keys:
-      topics           (list[dict]) — candidate topics with viral_tier + weighted_score
-      topics_processed (int)
-      topics_rejected  (int)
+        topics           (list[dict]) — passing topics with viral_tier + viral_score
+        topics_processed (int)        — total topics evaluated
+        topics_rejected  (int)        — topics below the score threshold
     """
     batch_id: str = state["batch_id"]
-    signals: list[dict[str, Any]] = state.get("raw_signals", [])
-    log.info("predict_virality: scoring %d signals  batch_id=%s", len(signals), batch_id)
-
-    topics: list[dict[str, Any]] = []
-    rejected = 0
-
-    # TODO: implement viral prediction model
-    # from models.viral_model import ViralPredictor
-    # predictor = ViralPredictor()
-    # for signal_group in group_signals_by_topic(signals):
-    #     score = predictor.score(signal_group)
-    #     if score.weighted_score < MIN_THRESHOLD:
-    #         rejected += 1
-    #         continue
-    #     topics.append({**signal_group, **score.model_dump(), 'batch_id': batch_id})
+    raw_signals: list[RawTopic] = state.get("raw_signals", [])
 
     log.info(
-        "predict_virality: %d topics passed, %d rejected",
-        len(topics), rejected,
+        "predict_virality: scoring %d topics  batch_id=%s",
+        len(raw_signals),
+        batch_id,
     )
+
+    node = ViralPredictionNode()
+    passing = node.run(batch_id, raw_signals)
+
+    topics_processed = len(raw_signals)
+    topics_rejected  = topics_processed - len(passing)
+
+    log.info(
+        "predict_virality: %d passed, %d rejected  batch_id=%s",
+        len(passing),
+        topics_rejected,
+        batch_id,
+    )
+
     return {
-        "topics":          topics,
-        "topics_processed": len(topics) + rejected,
-        "topics_rejected":  rejected,
+        "topics":            passing,
+        "topics_processed":  topics_processed,
+        "topics_rejected":   topics_rejected,
     }
