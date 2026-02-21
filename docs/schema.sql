@@ -102,15 +102,18 @@ CREATE TABLE public.runs_log (
 -- NOTE: is_admin() is defined AFTER this table (see Section 3).
 -- ---------------------------------------------------------------------------
 CREATE TABLE public.user_profiles (
-  id            UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email         TEXT        NOT NULL UNIQUE,
-  display_name  TEXT,
-  avatar_url    TEXT,
-  is_admin      BOOLEAN     NOT NULL DEFAULT FALSE,
-  is_active     BOOLEAN     NOT NULL DEFAULT TRUE,
-  last_seen_at  TIMESTAMPTZ,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                        UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email                     TEXT        NOT NULL UNIQUE,
+  display_name              TEXT,
+  avatar_url                TEXT,
+  is_admin                  BOOLEAN     NOT NULL DEFAULT FALSE,
+  is_minor                  BOOLEAN     NOT NULL DEFAULT FALSE,  -- age 13–17 at registration
+  is_active                 BOOLEAN     NOT NULL DEFAULT TRUE,
+  ccpa_opt_out              BOOLEAN     NOT NULL DEFAULT FALSE,  -- CCPA Do Not Sell flag
+  weekly_submission_used_at TIMESTAMPTZ,                        -- 7-day submission cooldown
+  last_seen_at              TIMESTAMPTZ,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 

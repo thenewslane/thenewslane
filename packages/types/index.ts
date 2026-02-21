@@ -186,15 +186,18 @@ export interface DistributionLog {
 // =============================================================================
 
 export interface UserProfile {
-  id:           UUID;
-  email:        string;
-  display_name: string | null;
-  avatar_url:   string | null;
-  is_admin:     boolean;
-  is_active:    boolean;
-  last_seen_at: ISODate | null;
-  created_at:   ISODate;
-  updated_at:   ISODate;
+  id:                        UUID;
+  email:                     string;
+  display_name:              string | null;
+  avatar_url:                string | null;
+  is_admin:                  boolean;
+  is_minor:                  boolean;           // age 13–17 at registration
+  is_active:                 boolean;
+  ccpa_opt_out:              boolean;           // CCPA Do Not Sell flag
+  weekly_submission_used_at: ISODate | null;    // 7-day submission cooldown
+  last_seen_at:              ISODate | null;
+  created_at:                ISODate;
+  updated_at:                ISODate;
 }
 
 // =============================================================================
@@ -280,17 +283,49 @@ export interface Database {
       };
       user_profiles: {
         Row:    UserProfile;
-        Insert: Omit<UserProfile, 'created_at' | 'updated_at'>;
+        // id is required (must match auth.users.id); fields with DB defaults are optional.
+        Insert: {
+          id:                        UUID;
+          email:                     string;
+          display_name?:             string | null;
+          avatar_url?:               string | null;
+          is_admin?:                 boolean;
+          is_minor?:                 boolean;
+          is_active?:                boolean;
+          ccpa_opt_out?:             boolean;
+          weekly_submission_used_at?: ISODate | null;
+          last_seen_at?:             ISODate | null;
+        };
         Update: Partial<Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>>;
       };
       user_preferences: {
         Row:    UserPreferences;
-        Insert: Omit<UserPreferences, 'id' | 'created_at' | 'updated_at'>;
+        // user_id is required; all other fields have DB defaults so are optional.
+        Insert: {
+          user_id:                UUID;
+          id?:                    UUID;
+          preferred_categories?:  number[] | null;
+          preferred_viral_tiers?: (1 | 2 | 3)[] | null;
+          notification_enabled?:  boolean;
+          email_digest_enabled?:  boolean;
+          digest_frequency?:      DigestFrequency | null;
+        };
         Update: Partial<Omit<UserPreferences, 'id' | 'created_at' | 'updated_at'>>;
       };
       user_submissions: {
         Row:    UserSubmission;
-        Insert: Omit<UserSubmission, 'id' | 'created_at' | 'updated_at' | 'category' | 'user'>;
+        // user_id and title are required; everything else has defaults or is nullable.
+        Insert: {
+          user_id:          UUID;
+          title:            string;
+          category_id?:     number | null;
+          url?:             string | null;
+          description?:     string | null;
+          status?:          SubmissionStatus;
+          moderator_notes?: string | null;
+          reviewed_by?:     UUID | null;
+          reviewed_at?:     ISODate | null;
+        };
         Update: Partial<Omit<UserSubmission, 'id' | 'created_at' | 'updated_at' | 'category' | 'user'>>;
       };
     };
