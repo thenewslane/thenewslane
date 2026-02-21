@@ -5,6 +5,8 @@ node_modules/
 # Next.js
 apps/web/.next/
 apps/web/out/
+apps/admin/.next/
+apps/admin/out/
 
 # Environment files (contain secrets)
 .env.local

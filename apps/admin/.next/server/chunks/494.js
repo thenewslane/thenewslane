@@ -1,1 +1,0 @@
-"use strict";exports.id=494,exports.ids=[494],exports.modules={4018:(r,t,s)=>{s.r(t),s.d(t,{PredictionsChart:()=>e});let e=(0,s(3189).createProxy)(String.raw`/Users/admin/Desktop/platform/apps/admin/app/predictions/_PredictionsChart.tsx#PredictionsChart`)}};
