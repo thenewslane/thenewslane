@@ -45,7 +45,6 @@ class BrandSafetyNode:
             "batch_id": batch_id,
             "topic_id": topic_id,
             "topic_title": topic_title,
-            "headline_cluster": headline_cluster,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "tier1_passed": False,
             "tier1_blocked_keyword": None,

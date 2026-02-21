@@ -101,7 +101,7 @@ class LlamaGuardFilter:
             ]
 
             response = self.client.chat.completions.create(
-                model="llama-guard-3-8b",
+                model="meta-llama/Llama-Guard-3-11B-Vision-Turbo",
                 messages=messages,
                 temperature=0.0,
                 max_tokens=100
@@ -164,7 +164,7 @@ Headlines: {headline_cluster}
 Would a major advertiser be comfortable? Answer: SAFE or UNSAFE and one sentence explanation."""
 
             response = self.client.messages.create(
-                model="claude-3-5-haiku-20241022",
+                model="claude-haiku-4-5-20251001",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=200,
                 temperature=0.0
