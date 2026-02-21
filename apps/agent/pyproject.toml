@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent"
+version = "0.1.0"
+description = "AI pipeline agent for theNewslane — LangGraph-powered signal collection, viral prediction, brand safety, and content generation"
+requires-python = ">=3.11"
+dependencies = [
+    # ── LangGraph / LangChain ────────────────────────────────────────────
+    "langgraph>=0.2",
+    "langchain-anthropic>=0.3",
+    "langchain-core>=0.3",
+
+    # ── Anthropic SDK (direct usage — content generation, brand safety) ──
+    "anthropic>=0.40",
+
+    # ── Supabase (DB + Storage) ──────────────────────────────────────────
+    "supabase>=2.0",
+
+    # ── Signal collection ────────────────────────────────────────────────
+    "apify-client>=1.7",
+    "httpx>=0.27",
+
+    # ── AI / ML services ────────────────────────────────────────────────
+    "groq>=0.12",
+    "replicate>=0.25",
+
+    # ── Data processing ──────────────────────────────────────────────────
+    "vaderSentiment>=3.3",
+    "numpy>=1.26",
+    "pandas>=2.2",
+
+    # ── Media ────────────────────────────────────────────────────────────
+    "ffmpeg-python>=0.2",
+    "boto3>=1.35",          # S3-compatible Supabase Storage uploads
+
+    # ── Scheduling ───────────────────────────────────────────────────────
+    "inngest>=0.4",
+
+    # ── Settings / env ───────────────────────────────────────────────────
+    "python-dotenv>=1.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[project.scripts]
+agent = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nodes*", "models*", "utils*", "config*", "scripts*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -17,6 +17,17 @@ apps/admin/out/
 dist/
 build/
 
+# Python agent — secrets and generated artifacts
+# apps/agent/.env contains real API keys; never commit it
+apps/agent/.env
+apps/agent/.venv/
+apps/agent/__pycache__/
+apps/agent/**/__pycache__/
+apps/agent/**/*.pyc
+apps/agent/.ruff_cache/
+apps/agent/.mypy_cache/
+apps/agent/*.egg-info/
+
 # Package manager
 .npm/
 
