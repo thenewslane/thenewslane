@@ -285,39 +285,56 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
+        # Map video_type to the DB CHECK constraint values
+        _vtype_map = {
+            "youtube": "youtube_embed",
+            "vimeo":   "vimeo_embed",
+            "ai_needed": "kling_generated",
+        }
+        raw_vtype = topic.get("video_type", "none")
+        db_video_type: str | None = _vtype_map.get(raw_vtype)  # None for "none"/unknown
+
+        # Bundle social content into social_copy JSONB column
+        social_copy: dict[str, Any] = {}
+        if topic.get("facebook_post"):
+            social_copy["facebook"] = topic["facebook_post"]
+        if topic.get("instagram_caption"):
+            social_copy["instagram"] = topic["instagram_caption"]
+        if topic.get("twitter_thread"):
+            social_copy["twitter"] = topic["twitter_thread"]
+        if topic.get("youtube_script"):
+            social_copy["youtube"] = topic["youtube_script"]
+
+        # Bundle extra metadata into schema_blocks JSONB column
+        schema_blocks: dict[str, Any] = {}
+        for key in ("seo_title", "meta_description", "faq", "headline_cluster",
+                    "embed_url", "channel_name", "video_id", "image_prompt",
+                    "video_url_portrait"):
+            if topic.get(key):
+                schema_blocks[key] = topic[key]
+
+        # Convert iab_categories list → iab_tags TEXT[]
+        iab_tags: list[str] = topic.get("iab_categories") or []
+
         patch: dict[str, Any] = {
-            "status":             "published",
-            "published_at":       now_iso,
-            "batch_id":           batch_id,
-            "slug":               slug,
-            "title":              topic.get("title") or topic.get("keyword", ""),
-            "category":           topic.get("category", "World News"),
-            "headline_cluster":   topic.get("headline_cluster", ""),
-            "viral_tier":         topic.get("viral_tier"),
-            "viral_score":        topic.get("viral_score"),
-            "brand_safe":         topic.get("brand_safe", True),
-            # Content fields
-            "seo_title":          topic.get("seo_title", ""),
-            "meta_description":   topic.get("meta_description", ""),
-            "summary_80w":        topic.get("summary_80w", ""),
-            "article_250w":       topic.get("article_250w", ""),
-            "faq":                topic.get("faq", []),
-            "facebook_post":      topic.get("facebook_post", ""),
-            "instagram_caption":  topic.get("instagram_caption", ""),
-            "twitter_thread":     topic.get("twitter_thread", []),
-            "youtube_script":     topic.get("youtube_script", ""),
-            "iab_categories":     topic.get("iab_categories", []),
+            "status":       "published",
+            "published_at": now_iso,
+            "batch_id":     batch_id,
+            "slug":         slug,
+            "title":        topic.get("title") or topic.get("keyword", ""),
+            "viral_tier":   topic.get("viral_tier"),
+            "viral_score":  topic.get("viral_score"),
+            # Content fields — mapped to actual schema columns
+            "summary":      topic.get("summary_80w") or "",
+            "article":      topic.get("article_250w") or "",
+            "script":       topic.get("youtube_script") or "",
+            "iab_tags":     iab_tags,
+            "social_copy":  social_copy or None,
+            "schema_blocks": schema_blocks or None,
             # Media fields
-            "thumbnail_url":      topic.get("thumbnail_url"),
-            "video_url":          topic.get("video_url"),
-            "video_url_portrait": topic.get("video_url_portrait"),
-            "video_type":         topic.get("video_type", "none"),
-            "video_id":           topic.get("video_id"),
-            "embed_url":          topic.get("embed_url"),
-            "channel_name":       topic.get("channel_name"),
-            # Flags
-            "content_generated":  topic.get("content_generated", False),
-            "media_generated":    topic.get("media_generated", False),
+            "thumbnail_url": topic.get("thumbnail_url"),
+            "video_url":     topic.get("video_url"),
+            "video_type":    db_video_type,
         }
         # Strip None values so we don't overwrite nullable DB columns with null
         patch = {k: v for k, v in patch.items() if v is not None}
