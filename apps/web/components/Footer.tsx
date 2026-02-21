@@ -21,6 +21,7 @@ const PUBLICATION_DOMAIN = process.env.PUBLICATION_DOMAIN ?? '';
 const COMPLIANCE_LINKS = [
   { href: '/privacy',        label: 'Privacy Policy' },
   { href: '/terms',          label: 'Terms of Service' },
+  { href: '/do-not-sell',    label: 'Do Not Sell My Info' },
   { href: '/dmca',           label: 'DMCA' },
   { href: '/about',          label: 'About' },
   { href: '/contact',        label: 'Contact' },
