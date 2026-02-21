@@ -1,20 +1,17 @@
 """
 nodes/signal_collector.py — LangGraph node: collect signals from all platforms.
 
-Platforms:
-  - Twitter/X trending (Apify actor)
-  - Reddit rising (Apify actor)
-  - YouTube trending (YouTube Data API v3)
-  - Google Trends (Apify actor)
-  - NewsAPI top headlines
-
-Each source's raw results are stored in raw_signals (DB) and returned in state.
+Delegates to collection_node.collect_signals_node() which runs three Apify
+actors (Twitter, Google Trends, Reddit) in parallel, enriches with NewsAPI,
+and persists all raw rows to the raw_signals table.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from config.settings import settings
+from nodes.collection_node import RawTopic, collect_signals_node
 from utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -25,32 +22,18 @@ def collect_signals(state: dict[str, Any]) -> dict[str, Any]:
     LangGraph node — collect trending signals from all configured platforms.
 
     Updates state keys:
-      raw_signals       (list[dict])  — all collected signal rows
-      signals_collected (int)         — total count
+      raw_signals         (list[RawTopic]) — merged topic objects
+      signals_collected   (int)            — total unique topics collected
     """
     batch_id: str = state["batch_id"]
-    log.info("collect_signals: starting  batch_id=%s", batch_id)
+    geo: str = state.get("geo", settings.trends_geo)
 
-    all_signals: list[dict[str, Any]] = []
+    log.info("collect_signals: starting  batch_id=%s  geo=%s", batch_id, geo)
 
-    # TODO: implement each platform collector
-    # from signal_sources.twitter import collect_twitter
-    # from signal_sources.reddit import collect_reddit
-    # from signal_sources.youtube import collect_youtube
-    # from signal_sources.google_trends import collect_google_trends
-    # from signal_sources.newsapi import collect_newsapi
-    #
-    # collectors = [collect_twitter, collect_reddit, collect_youtube,
-    #               collect_google_trends, collect_newsapi]
-    # for collector in collectors:
-    #     try:
-    #         signals = collector(batch_id)
-    #         all_signals.extend(signals)
-    #     except Exception as exc:
-    #         log.error("Collector %s failed: %s", collector.__name__, exc)
+    topics: list[RawTopic] = collect_signals_node(batch_id, geo)
 
-    log.info("collect_signals: collected %d signals", len(all_signals))
+    log.info("collect_signals: collected %d topics", len(topics))
     return {
-        "raw_signals":     all_signals,
-        "signals_collected": len(all_signals),
+        "raw_signals": topics,
+        "signals_collected": len(topics),
     }

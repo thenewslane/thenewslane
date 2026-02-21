@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     # ── Pipeline tuning ───────────────────────────────────────────────────────
     pipeline_cron: str = Field(default="0 */4 * * *", description="Inngest CRON expression")
     batch_size_limit: int = Field(default=50, description="Max topics to process per batch")
+    trends_geo: str = Field(default="US", description="ISO country code for Google Trends geo filter")
+    newsapi_max_topics: int = Field(default=20, description="Max topics to query in NewsAPI per batch")
 
     @model_validator(mode="after")
     def _validate_required(self) -> "Settings":
