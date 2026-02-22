@@ -24,8 +24,8 @@ class TestValidation:
         valid_content = {
             "seo_title": "Short Title",
             "meta_description": "A description under 160 characters that describes the content properly.",
-            "summary_80w": " ".join(["word"] * 80),  # Exactly 80 words
-            "article_250w": " ".join(["word"] * 250),  # 250 words
+            "summary_16w": " ".join(["word"] * 16),  # Exactly 16 words
+            "article_50w": " ".join(["word"] * 50),  # 50 words
             "faq": [
                 {"question": "What is this?", "answer": "This is an answer."},
                 {"question": "Why important?", "answer": "It matters because reasons."}
@@ -59,8 +59,8 @@ class TestValidation:
         
         result = generator._validate_content(incomplete_content)
         assert not result.is_valid
-        assert "Missing required field: summary_80w" in result.errors
-        assert "Missing required field: article_250w" in result.errors
+        assert "Missing required field: summary_16w" in result.errors
+        assert "Missing required field: article_50w" in result.errors
 
     def test_validate_content_length_violations(self):
         """Test validation with length violations."""
@@ -69,8 +69,8 @@ class TestValidation:
         invalid_content = {
             "seo_title": "This is a very long title that exceeds the 60 character limit and should fail validation",
             "meta_description": "This is an extremely long meta description that definitely exceeds the 160 character limit and should trigger a validation error when processed by the validator. Adding even more text to make sure it's over 160.",
-            "summary_80w": " ".join(["word"] * 50),  # Wrong word count
-            "article_250w": " ".join(["word"] * 100),  # Wrong word count
+            "summary_16w": " ".join(["word"] * 50),  # Wrong word count (should be 16)
+            "article_50w": " ".join(["word"] * 100),  # Wrong word count (should be 50)
             "faq": [{"question": "Q1", "answer": "A1"}],  # Only 1 instead of 2
             "facebook_post": "Short post",  # Missing placeholder, wrong length
             "instagram_caption": "Caption without hashtags",
@@ -88,8 +88,8 @@ class TestValidation:
         error_text = " ".join(result.errors)
         assert "seo_title too long" in error_text
         assert "meta_description too long" in error_text
-        assert "summary_80w wrong length" in error_text
-        assert "article_250w wrong length" in error_text
+        assert "summary_16w wrong length" in error_text
+        assert "article_50w wrong length" in error_text
         assert "faq must be array of exactly 2" in error_text
         assert "ARTICLE_LINK_PLACEHOLDER" in error_text
         assert "instagram_caption needs 5 hashtags" in error_text
@@ -232,8 +232,8 @@ class TestContentGenerator:
         valid_content = {
             "seo_title": "Valid Title",
             "meta_description": "Valid description under 160 characters",
-            "summary_80w": " ".join(["word"] * 80),
-            "article_250w": " ".join(["word"] * 250),
+            "summary_16w": " ".join(["word"] * 16),
+            "article_50w": " ".join(["word"] * 50),
             "faq": [
                 {"question": "Q1", "answer": "A1"},
                 {"question": "Q2", "answer": "A2"}

@@ -299,7 +299,7 @@ class TestPublishNode:
             "viral_tier": 1,
             "viral_score": 0.95,
             "seo_title": "Test SEO Title",
-            "article_250w": "Test article content...",
+            "article_50w": "Test article content...",
             "thumbnail_url": "https://example.com/thumb.jpg",
             "brand_safe": True,
             "content_generated": True

@@ -55,7 +55,7 @@ def main():
         try:
             # Check for NULL content fields in recent topics
             result = db.client.table("trending_topics").select(
-                "id, status, title, seo_title, article_250w, viral_tier, created_at"
+                "id, status, title, summary, article, viral_tier, created_at"
             ).order("created_at", desc=True).limit(10).execute()
             
             if result.data:
@@ -63,14 +63,14 @@ def main():
                 for i, topic in enumerate(result.data, 1):
                     title = topic.get("title") or "NULL"
                     seo_title = topic.get("seo_title") or "NULL" 
-                    article = "NULL" if not topic.get("article_250w") else "✓"
+                    article = "NULL" if not topic.get("article") else "✓"
                     status = topic.get("status", "NULL")
                     tier = topic.get("viral_tier", "NULL")
                     
                     print(f"    {i}. [{status}] tier={tier} title='{title[:30]}...' seo={seo_title[:20]} article={article}")
                 
                 # Count NULL fields
-                null_content_count = sum(1 for t in result.data if not t.get("seo_title") or not t.get("article_250w"))
+                null_content_count = sum(1 for t in result.data if not t.get("summary") or not t.get("article"))
                 if null_content_count > 5:
                     print(f"  ⚠️  {null_content_count}/10 recent topics have NULL content fields")
                     print("     This indicates content generation is failing")
@@ -146,7 +146,7 @@ def main():
     print("5. **Force publish existing good topics** (if any exist):")
     print("   -- Find topics with content but not published:")
     print("   SELECT id, title, status FROM trending_topics") 
-    print("   WHERE seo_title IS NOT NULL AND article_250w IS NOT NULL AND status != 'published';")
+    print("   WHERE summary IS NOT NULL AND article IS NOT NULL AND status != 'published';")
     print("   -- Manually set to published:")
     print("   UPDATE trending_topics SET status = 'published', published_at = NOW()")
     print("   WHERE id IN ('topic-id-1', 'topic-id-2');")

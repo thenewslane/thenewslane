@@ -77,8 +77,8 @@ class PublishService:
             # Content fields
             "seo_title": topic.get("seo_title", ""),
             "meta_description": topic.get("meta_description", ""),
-            "summary_80w": topic.get("summary_80w", ""),
-            "article_250w": topic.get("article_250w", ""),
+            "summary_16w": topic.get("summary_16w", ""),
+            "article_50w": topic.get("article_50w", ""),
             "faq": topic.get("faq", []),
             "facebook_post": topic.get("facebook_post", ""),
             "instagram_caption": topic.get("instagram_caption", ""),
