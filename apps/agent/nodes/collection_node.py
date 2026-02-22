@@ -1,8 +1,13 @@
 """
-nodes/collection_node.py — Async multi-platform signal collection.
+nodes/collection_node.py — Free multi-platform signal collection.
 
-Runs three Apify actors (Twitter, Google Trends, Reddit) concurrently,
-then fetches NewsAPI article counts for the top merged topics.
+Collects trending topics from 5 free sources:
+1. Google Trends RSS feeds (daily + realtime)
+2. NewsAPI (enhanced with multiple categories)
+3. RSS feeds (BBC, Reuters, CNN, Sky News)
+4. Pytrends (trending searches)
+5. Hacker News API (top stories)
+
 Topics are deduplicated across platforms with rapidfuzz fuzzy matching,
 persisted to raw_signals, and returned as RawTopic dataclass instances.
 """
@@ -10,12 +15,14 @@ persisted to raw_signals, and returned as RawTopic dataclass instances.
 from __future__ import annotations
 
 import asyncio
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import feedparser
 import httpx
-from apify_client import ApifyClientAsync
+from pytrends.request import TrendReq
 from rapidfuzz import fuzz, process
 
 from config.settings import settings
@@ -25,10 +32,27 @@ from utils.supabase_client import db
 log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# Merge threshold
+# Configuration
 # ---------------------------------------------------------------------------
 
-_MERGE_THRESHOLD = 72  # token_set_ratio score (0-100)
+_MERGE_THRESHOLD = 72  # token_set_ratio score (0-100) for fuzzy matching
+
+# RSS feed URLs
+RSS_FEEDS = {
+    "bbc": "https://feeds.bbci.co.uk/news/rss.xml",
+    "reuters": "https://feeds.reuters.com/reuters/topNews", 
+    "cnn": "http://rss.cnn.com/rss/edition.rss",
+    "sky_news": "https://feeds.skynews.com/feeds/rss/home.xml"
+}
+
+# Google Trends RSS feeds (Note: These may not be publicly available)
+GOOGLE_TRENDS_RSS = {
+    "daily": "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US",
+    "realtime": "https://trends.google.com/trends/trendingsearches/realtime/rss?geo=US&category=all"
+}
+
+# NewsAPI categories to fetch in parallel
+NEWSAPI_CATEGORIES = ["general", "technology", "entertainment", "sports", "science", "health"]
 
 
 # ---------------------------------------------------------------------------
@@ -43,7 +67,6 @@ class RawTopic:
     keyword: str
     platforms: list[str] = field(default_factory=list)
     twitter_rank: int | None = None
-    reddit_score: int | None = None
     trends_interest: int | None = None
     news_count: int = 0
     # raw DB rows ready for insert_signals(); populated by the collectors
@@ -74,241 +97,388 @@ def _find_canonical(keyword: str, canonical: list[str]) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Apify actor runner
+# Source 1: Google Trends RSS
 # ---------------------------------------------------------------------------
 
 
-async def _run_actor(
-    actor_id: str,
-    run_input: dict[str, Any],
-    *,
-    timeout_secs: int = 180,
-    max_items: int = 100,
-) -> list[dict[str, Any]]:
-    """Call an Apify actor and return its full dataset as a list of dicts."""
-    client = ApifyClientAsync(settings.apify_api_key)
-    run = await client.actor(actor_id).call(
-        run_input=run_input,
-        timeout_secs=timeout_secs,
-    )
-    if run is None:
-        return []
-    dataset_id: str = run["defaultDatasetId"]
-    result = await client.dataset(dataset_id).list_items(limit=max_items)
-    return result.items or []
-
-
-# ---------------------------------------------------------------------------
-# Platform collectors — each returns a list of intermediate dicts
-# ---------------------------------------------------------------------------
-
-
-async def _fetch_twitter() -> list[dict[str, Any]]:
-    """Fetch US trending topics via apidojo/twitter-trending-hashtags-scraper."""
-    items = await _run_actor(
-        "apidojo/twitter-trending-hashtags-scraper",
-        {"country": "US", "topN": 50},
-        timeout_secs=120,
-        max_items=50,
-    )
+async def _fetch_google_trends_rss() -> list[dict[str, Any]]:
+    """Fetch trending topics from Google Trends RSS feeds."""
     rows: list[dict[str, Any]] = []
-    for rank, item in enumerate(items, start=1):
-        raw_keyword = item.get("name") or item.get("keyword") or ""
-        keyword = _normalize(str(raw_keyword))
-        if not keyword:
-            continue
-        rows.append(
-            {
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for feed_name, url in GOOGLE_TRENDS_RSS.items():
+            try:
+                log.debug(f"Fetching Google Trends RSS: {feed_name}")
+                resp = await client.get(url, follow_redirects=True)
+                resp.raise_for_status()
+                
+                # Parse XML manually to extract trending topics
+                root = ET.fromstring(resp.content)
+                
+                for item in root.findall(".//item"):
+                    title_elem = item.find("title")
+                    if title_elem is None or not title_elem.text:
+                        continue
+                    
+                    raw_title = title_elem.text.strip()
+                    keyword = _normalize(raw_title)
+                    if not keyword:
+                        continue
+                    
+                    # Try to extract traffic info from description
+                    desc_elem = item.find("description")
+                    traffic_info = 0
+                    if desc_elem and desc_elem.text:
+                        # Look for numbers in description that might indicate traffic
+                        import re
+                        numbers = re.findall(r'(\d+(?:,\d+)*)', desc_elem.text)
+                        if numbers:
+                            try:
+                                traffic_info = int(numbers[0].replace(',', ''))
+                            except ValueError:
+                                pass
+                    
+                    rows.append({
+                        "keyword": keyword,
+                        "traffic": traffic_info,
+                        "platform_row": {
+                            "platform": "google_trends",
+                            "topic_keyword": keyword,
+                            "source_id": f"trends_rss_{feed_name}",
+                            "title": raw_title,
+                            "raw_data": {
+                                "feed": feed_name,
+                                "title": raw_title,
+                                "traffic_estimate": traffic_info
+                            },
+                            "engagement_data": {
+                                "traffic_estimate": traffic_info,
+                                "feed_type": feed_name
+                            }
+                        }
+                    })
+                    
+            except Exception as exc:
+                log.error(f"Failed to fetch Google Trends RSS {feed_name}: {exc}")
+    
+    log.info(f"Google Trends RSS: collected {len(rows)} topics")
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Source 2: Enhanced NewsAPI
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_newsapi_headlines() -> list[dict[str, Any]]:
+    """Fetch top headlines from NewsAPI across multiple categories."""
+    if not settings.newsapi_key:
+        log.warning("NewsAPI key missing - skipping NewsAPI collection")
+        return []
+    
+    rows: list[dict[str, Any]] = []
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        tasks = []
+        
+        for category in NEWSAPI_CATEGORIES:
+            task = _fetch_newsapi_category(client, category)
+            tasks.append(task)
+        
+        # Fetch all categories in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for i, result in enumerate(results):
+            category = NEWSAPI_CATEGORIES[i]
+            if isinstance(result, Exception):
+                log.error(f"NewsAPI category {category} failed: {result}")
+                continue
+                
+            rows.extend(result)
+    
+    log.info(f"NewsAPI: collected {len(rows)} topics across {len(NEWSAPI_CATEGORIES)} categories")
+    return rows
+
+
+async def _fetch_newsapi_category(client: httpx.AsyncClient, category: str) -> list[dict[str, Any]]:
+    """Fetch headlines for a specific NewsAPI category."""
+    try:
+        resp = await client.get(
+            "https://newsapi.org/v2/top-headlines",
+            params={
+                "category": category,
+                "country": "us",
+                "pageSize": 20,
+                "language": "en",
+                "apiKey": settings.newsapi_key,
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        articles = data.get("articles", [])
+        
+        rows = []
+        for rank, article in enumerate(articles, start=1):
+            raw_title = article.get("title", "").split(" - ")[0].strip()  # Remove source suffix
+            keyword = _normalize(raw_title)
+            if not keyword or len(keyword) < 5:
+                continue
+            
+            rows.append({
                 "keyword": keyword,
                 "rank": rank,
                 "platform_row": {
-                    "platform": "twitter",
+                    "platform": "google_news",
                     "topic_keyword": keyword,
-                    "source_id": str(item.get("id") or ""),
-                    "raw_data": item,
+                    "title": raw_title,
+                    "url": article.get("url", ""),
+                    "source_id": article.get("url", ""),
+                    "raw_data": article,
                     "engagement_data": {
-                        "tweet_count": item.get("tweetCount") or item.get("tweet_count"),
                         "rank": rank,
-                    },
-                },
-            }
-        )
+                        "category": category,
+                        "source": article.get("source", {}).get("name", ""),
+                        "published_at": article.get("publishedAt", "")
+                    }
+                }
+            })
+            
+        return rows
+        
+    except Exception as exc:
+        log.error(f"NewsAPI category {category} failed: {exc}")
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Source 3: RSS feeds
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_rss_feeds() -> list[dict[str, Any]]:
+    """Fetch articles from major RSS feeds."""
+    rows: list[dict[str, Any]] = []
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        tasks = []
+        
+        for feed_name, feed_url in RSS_FEEDS.items():
+            task = _fetch_single_rss_feed(client, feed_name, feed_url)
+            tasks.append(task)
+        
+        # Fetch all feeds in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        for i, result in enumerate(results):
+            feed_name = list(RSS_FEEDS.keys())[i]
+            if isinstance(result, Exception):
+                log.error(f"RSS feed {feed_name} failed: {result}")
+                continue
+                
+            rows.extend(result)
+    
+    log.info(f"RSS feeds: collected {len(rows)} topics from {len(RSS_FEEDS)} feeds")
     return rows
 
 
-async def _fetch_google_trends(geo: str = "US") -> list[dict[str, Any]]:
-    """Fetch rising search topics via epctex/google-trends-scraper."""
-    items = await _run_actor(
-        "epctex/google-trends-scraper",
-        {
-            "searchTerms": [],
-            "geo": geo,
-            "category": "all",
-            "timeRange": "now 1-d",
-            "outputMode": "trending",
-        },
-        timeout_secs=180,
-        max_items=50,
-    )
-    rows: list[dict[str, Any]] = []
-    for item in items:
-        raw_keyword = item.get("title") or item.get("query") or ""
-        keyword = _normalize(str(raw_keyword))
-        if not keyword:
-            continue
-        interest = int(item.get("value") or item.get("interest") or 0)
-        rows.append(
-            {
+async def _fetch_single_rss_feed(client: httpx.AsyncClient, feed_name: str, feed_url: str) -> list[dict[str, Any]]:
+    """Fetch articles from a single RSS feed."""
+    try:
+        resp = await client.get(feed_url, follow_redirects=True)
+        resp.raise_for_status()
+        
+        # Parse RSS feed
+        feed = feedparser.parse(resp.content)
+        
+        rows = []
+        for i, entry in enumerate(feed.entries[:15]):  # Limit to 15 per feed
+            title = getattr(entry, 'title', '').strip()
+            if not title:
+                continue
+                
+            keyword = _normalize(title)
+            if not keyword:
+                continue
+            
+            published = getattr(entry, 'published', '')
+            link = getattr(entry, 'link', '')
+            
+            rows.append({
                 "keyword": keyword,
-                "interest": interest,
+                "rank": i + 1,
+                "platform_row": {
+                    "platform": "rss_feeds",
+                    "topic_keyword": keyword,
+                    "title": title,
+                    "url": link,
+                    "source_id": link,
+                    "raw_data": {
+                        "feed_name": feed_name,
+                        "title": title,
+                        "link": link,
+                        "published": published
+                    },
+                    "engagement_data": {
+                        "feed_name": feed_name,
+                        "rank": i + 1,
+                        "published": published
+                    }
+                }
+            })
+            
+        return rows
+        
+    except Exception as exc:
+        log.error(f"RSS feed {feed_name} failed: {exc}")
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Source 4: Pytrends
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_pytrends() -> list[dict[str, Any]]:
+    """Fetch trending searches using pytrends."""
+    rows: list[dict[str, Any]] = []
+    
+    try:
+        # Pytrends is synchronous, so run in thread pool
+        def _pytrends_sync():
+            pytrends = TrendReq(hl='en-US', tz=360)
+            
+            # Get trending searches
+            trending_searches = pytrends.trending_searches(pn='united_states')
+            
+            topics = []
+            if trending_searches is not None and not trending_searches.empty:
+                # Get top 20 trending topics
+                for i, topic in enumerate(trending_searches.head(20)[0].tolist()):
+                    topics.append({
+                        "topic": str(topic),
+                        "rank": i + 1
+                    })
+            
+            return topics
+        
+        # Run Pytrends API call in thread pool
+        loop = asyncio.get_event_loop()
+        topics = await loop.run_in_executor(None, _pytrends_sync)
+        
+        for topic_data in topics:
+            topic = topic_data["topic"].strip()
+            if not topic:
+                continue
+                
+            keyword = _normalize(topic)
+            if not keyword:
+                continue
+            
+            rows.append({
+                "keyword": keyword,
+                "rank": topic_data["rank"],
                 "platform_row": {
                     "platform": "google_trends",
                     "topic_keyword": keyword,
-                    "raw_data": item,
-                    "engagement_data": {
-                        "interest": interest,
-                        "formatted_value": item.get("formattedValue"),
+                    "title": topic,
+                    "source_id": f"pytrends_{topic_data['rank']}",
+                    "raw_data": {
+                        "original_topic": topic,
+                        "rank": topic_data["rank"],
+                        "source": "pytrends"
                     },
-                },
-            }
-        )
-    return rows
-
-
-async def _fetch_reddit() -> list[dict[str, Any]]:
-    """Fetch hot posts from r/all via trudax/reddit-scraper."""
-    items = await _run_actor(
-        "trudax/reddit-scraper",
-        {
-            "startUrls": [{"url": "https://www.reddit.com/r/all/"}],
-            "sort": "hot",
-            "maxItems": 50,
-            "skipComments": True,
-        },
-        timeout_secs=120,
-        max_items=50,
-    )
-    rows: list[dict[str, Any]] = []
-    for item in items:
-        title = str(item.get("title") or "")
-        if not title:
-            continue
-        keyword = _normalize(title)
-        score = int(item.get("score") or item.get("ups") or 0)
-        rows.append(
-            {
-                "keyword": keyword,
-                "score": score,
-                "platform_row": {
-                    "platform": "reddit",
-                    "topic_keyword": keyword,
-                    "title": title,
-                    "url": item.get("url") or item.get("link") or "",
-                    "source_id": str(item.get("id") or ""),
-                    "raw_data": item,
                     "engagement_data": {
-                        "score": score,
-                        "num_comments": item.get("numComments") or item.get("num_comments"),
-                        "subreddit": item.get("subreddit"),
-                    },
-                },
-            }
-        )
-    return rows
-
-
-# ---------------------------------------------------------------------------
-# NewsAPI fallback — top headlines when all Apify actors fail
-# ---------------------------------------------------------------------------
-
-
-async def _fetch_newsapi_headlines(batch_id: str) -> list[RawTopic]:
-    """
-    Fallback: fetch top US headlines from NewsAPI and return them as RawTopics.
-    Called only when all Apify actors fail and produce zero topics.
-    """
-    if not settings.newsapi_key:
-        log.warning("collection: no NEWSAPI_KEY — cannot use NewsAPI fallback")
-        return []
-
-    log.info("collection: Apify actors all failed — falling back to NewsAPI top-headlines")
-    topics_out: list[RawTopic] = []
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
-                "https://newsapi.org/v2/top-headlines",
-                params={
-                    "country": "us",
-                    "pageSize": 30,
-                    "language": "en",
-                    "apiKey": settings.newsapi_key,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            articles = data.get("articles", [])
-
-        total = len(articles)
-        for rank, article in enumerate(articles, start=1):
-            raw_keyword = article.get("title") or article.get("description") or ""
-            # Strip " - Source Name" suffix that NewsAPI appends
-            raw_keyword = raw_keyword.split(" - ")[0].strip()
-            keyword = _normalize(raw_keyword)
-            if not keyword or len(keyword) < 5:
-                continue
-
-            # Simulate cross-platform signals proportional to headline rank
-            # so topics can reach the ≥50 viral score threshold.
-            # Rank 1 (hottest) gets max simulated signals; signals decay with rank.
-            decay = max(0.0, 1.0 - rank / (total + 1))
-            sim_twitter_rank = rank  # rank 1 = best
-            sim_reddit_score = int(50_000 * decay)   # up to 50k
-            sim_trends_interest = int(100 * decay)    # 0-100
-            sim_news_count = max(1, int(200 * decay)) # 1-200
-
-            if rank <= 5:
-                platforms = ["google_news", "google_trends", "reddit", "twitter"]
-            elif rank <= 15:
-                platforms = ["google_news", "google_trends", "reddit"]
-            else:
-                platforms = ["google_news", "google_trends"]
-
-            topic = RawTopic(
-                keyword=keyword,
-                platforms=platforms,
-                twitter_rank=sim_twitter_rank if "twitter" in platforms else None,
-                reddit_score=sim_reddit_score if "reddit" in platforms else None,
-                trends_interest=sim_trends_interest if "google_trends" in platforms else None,
-                news_count=sim_news_count,
-            )
-            topic.raw_rows.append({
-                "batch_id": batch_id,
-                "platform": "google_news",  # matches CHECK constraint
-                "topic_keyword": keyword,
-                "source_id": article.get("url", ""),
-                "raw_data": article,
-                "engagement_data": {
-                    "rank": rank,
-                    "source": article.get("source", {}).get("name", ""),
-                    "article_count": sim_news_count,
-                },
+                        "rank": topic_data["rank"],
+                        "source": "pytrends"
+                    }
+                }
             })
-            topics_out.append(topic)
-
-        log.info("collection: NewsAPI fallback returned %d topics", len(topics_out))
+            
     except Exception as exc:
-        log.error("collection: NewsAPI fallback failed: %s", exc)
-
-    return topics_out
+        log.error(f"Pytrends collection failed: {exc}")
+    
+    log.info(f"Pytrends: collected {len(rows)} topics")
+    return rows
 
 
 # ---------------------------------------------------------------------------
-# NewsAPI enrichment
+# Source 5: Hacker News
 # ---------------------------------------------------------------------------
 
 
-async def _fetch_newsapi(keywords: list[str]) -> dict[str, int]:
+async def _fetch_hacker_news() -> list[dict[str, Any]]:
+    """Fetch top stories from Hacker News API."""
+    rows: list[dict[str, Any]] = []
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            # Get top story IDs
+            resp = await client.get("https://hacker-news.firebaseio.com/v0/topstories.json")
+            resp.raise_for_status()
+            story_ids = resp.json()[:30]  # Get top 30 stories
+            
+            # Fetch story details in parallel (limit concurrency)
+            semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent requests
+            
+            async def fetch_story(story_id: int, rank: int):
+                async with semaphore:
+                    try:
+                        story_resp = await client.get(
+                            f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
+                        )
+                        story_resp.raise_for_status()
+                        return rank, story_resp.json()
+                    except Exception as exc:
+                        log.warning(f"Failed to fetch HN story {story_id}: {exc}")
+                        return rank, None
+            
+            tasks = [fetch_story(story_id, rank) for rank, story_id in enumerate(story_ids, 1)]
+            story_results = await asyncio.gather(*tasks)
+            
+            for rank, story in story_results:
+                if not story or story.get("type") != "story":
+                    continue
+                    
+                title = story.get("title", "").strip()
+                if not title:
+                    continue
+                    
+                keyword = _normalize(title)
+                if not keyword:
+                    continue
+                
+                rows.append({
+                    "keyword": keyword,
+                    "score": story.get("score", 0),
+                    "platform_row": {
+                        "platform": "hacker_news",
+                        "topic_keyword": keyword,
+                        "title": title,
+                        "url": story.get("url", ""),
+                        "source_id": str(story.get("id", "")),
+                        "raw_data": story,
+                        "engagement_data": {
+                            "score": story.get("score", 0),
+                            "descendants": story.get("descendants", 0),  # comment count
+                            "rank": rank,
+                            "time": story.get("time", 0)
+                        }
+                    }
+                })
+                
+        except Exception as exc:
+            log.error(f"Hacker News collection failed: {exc}")
+    
+    log.info(f"Hacker News: collected {len(rows)} topics")
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# NewsAPI enrichment (for topics without news counts)
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_newsapi_counts(keywords: list[str]) -> dict[str, int]:
     """Return {keyword: total_article_count} from NewsAPI for the last 24 h."""
     if not settings.newsapi_key or not keywords:
         return {}
@@ -333,7 +503,7 @@ async def _fetch_newsapi(keywords: list[str]) -> dict[str, int]:
                 data = resp.json()
                 counts[kw] = int(data.get("totalResults", 0))
             except Exception as exc:
-                log.warning("NewsAPI failed for %r: %s", kw, exc)
+                log.warning("NewsAPI enrichment failed for %r: %s", kw, exc)
                 counts[kw] = 0
 
     return counts
@@ -349,29 +519,32 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     Run all collectors concurrently, merge by topic, enrich with NewsAPI,
     and return the list of merged RawTopic objects.
     """
-    log.info("collection: starting concurrent fetch  batch_id=%s  geo=%s", batch_id, geo)
+    log.info("collection: starting free source collection  batch_id=%s  geo=%s", batch_id, geo)
 
-    # Run three Apify actors in parallel; isolate per-actor failures
-    twitter_result, trends_result, reddit_result = await asyncio.gather(
-        _fetch_twitter(),
-        _fetch_google_trends(geo),
-        _fetch_reddit(),
+    # Run all 5 free sources in parallel
+    results = await asyncio.gather(
+        _fetch_google_trends_rss(),
+        _fetch_newsapi_headlines(),
+        _fetch_rss_feeds(),
+        _fetch_pytrends(),
+        _fetch_hacker_news(),
         return_exceptions=True,
     )
 
-    platform_data: dict[str, list[dict[str, Any]]] = {
-        "twitter": twitter_result if isinstance(twitter_result, list) else [],
-        "google_trends": trends_result if isinstance(trends_result, list) else [],
-        "reddit": reddit_result if isinstance(reddit_result, list) else [],
+    # Organize results by source
+    source_data = {
+        "google_trends_rss": results[0] if isinstance(results[0], list) else [],
+        "newsapi": results[1] if isinstance(results[1], list) else [],
+        "rss_feeds": results[2] if isinstance(results[2], list) else [],
+        "pytrends": results[3] if isinstance(results[3], list) else [],
+        "hacker_news": results[4] if isinstance(results[4], list) else [],
     }
 
-    for platform_name, result in [
-        ("twitter", twitter_result),
-        ("google_trends", trends_result),
-        ("reddit", reddit_result),
-    ]:
+    # Log any failures
+    source_names = ["google_trends_rss", "newsapi", "rss_feeds", "pytrends", "hacker_news"]
+    for i, result in enumerate(results):
         if isinstance(result, Exception):
-            log.error("collection: %s actor failed: %s", platform_name, result)
+            log.error("collection: %s source failed: %s", source_names[i], result)
 
     # ── Fuzzy-merge topics across platforms ────────────────────────────────
     canonical: list[str] = []   # ordered list of canonical keyword strings
@@ -385,37 +558,61 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
             return topic_map[keyword]
         return topic_map[canon]
 
-    # Twitter
-    for item in platform_data["twitter"]:
-        topic = _get_or_create(item["keyword"])
-        if "twitter" not in topic.platforms:
-            topic.platforms.append("twitter")
-        if topic.twitter_rank is None:
-            topic.twitter_rank = item["rank"]
-        pr = dict(item["platform_row"])
-        pr["batch_id"] = batch_id
-        pr["topic_keyword"] = topic.keyword  # use canonical form
-        topic.raw_rows.append(pr)
-
-    # Google Trends
-    for item in platform_data["google_trends"]:
+    # Process Google Trends RSS
+    for item in source_data["google_trends_rss"]:
         topic = _get_or_create(item["keyword"])
         if "google_trends" not in topic.platforms:
             topic.platforms.append("google_trends")
         if topic.trends_interest is None:
-            topic.trends_interest = item["interest"]
+            topic.trends_interest = item.get("traffic", 0)
         pr = dict(item["platform_row"])
         pr["batch_id"] = batch_id
         pr["topic_keyword"] = topic.keyword
         topic.raw_rows.append(pr)
 
-    # Reddit
-    for item in platform_data["reddit"]:
+
+    # Process NewsAPI
+    for item in source_data["newsapi"]:
         topic = _get_or_create(item["keyword"])
-        if "reddit" not in topic.platforms:
-            topic.platforms.append("reddit")
-        if topic.reddit_score is None or item["score"] > topic.reddit_score:
-            topic.reddit_score = item["score"]
+        if "google_news" not in topic.platforms:
+            topic.platforms.append("google_news")
+        topic.news_count = max(topic.news_count, 1)  # Indicate news presence
+        pr = dict(item["platform_row"])
+        pr["batch_id"] = batch_id
+        pr["topic_keyword"] = topic.keyword
+        topic.raw_rows.append(pr)
+
+    # Process RSS Feeds
+    for item in source_data["rss_feeds"]:
+        topic = _get_or_create(item["keyword"])
+        if "rss_feeds" not in topic.platforms:
+            topic.platforms.append("rss_feeds")
+        topic.news_count = max(topic.news_count, 1)  # Indicate news presence
+        pr = dict(item["platform_row"])
+        pr["batch_id"] = batch_id
+        pr["topic_keyword"] = topic.keyword
+        topic.raw_rows.append(pr)
+
+    # Process Pytrends
+    for item in source_data["pytrends"]:
+        topic = _get_or_create(item["keyword"])
+        if "google_trends" not in topic.platforms:
+            topic.platforms.append("google_trends")
+        if topic.trends_interest is None:
+            topic.trends_interest = 100 - (item.get("rank", 20) * 5)  # Convert rank to interest
+        pr = dict(item["platform_row"])
+        pr["batch_id"] = batch_id
+        pr["topic_keyword"] = topic.keyword
+        topic.raw_rows.append(pr)
+
+    # Process Hacker News
+    for item in source_data["hacker_news"]:
+        topic = _get_or_create(item["keyword"])
+        if "hacker_news" not in topic.platforms:
+            topic.platforms.append("hacker_news")
+        # Use HN score as a tech interest metric
+        if topic.trends_interest is None:
+            topic.trends_interest = min(100, item.get("score", 0) // 5)  # Scale down HN scores
         pr = dict(item["platform_row"])
         pr["batch_id"] = batch_id
         pr["topic_keyword"] = topic.keyword
@@ -424,27 +621,25 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     topics = list(topic_map.values())
     log.info("collection: %d unique topics after fuzzy merge", len(topics))
 
-    # ── Fallback: if all actors failed, use NewsAPI top-headlines ──────────
-    if not topics:
-        topics = await _fetch_newsapi_headlines(batch_id)
-
-    # ── NewsAPI enrichment ─────────────────────────────────────────────────
-    keywords = [t.keyword for t in topics if t.news_count == 0]
-    news_counts = await _fetch_newsapi(keywords)
-
-    for topic in topics:
-        enriched_count = news_counts.get(topic.keyword, 0)
-        if enriched_count > 0:
-            topic.news_count = enriched_count
-            topic.raw_rows.append(
-                {
-                    "batch_id": batch_id,
-                    "platform": "google_news",
-                    "topic_keyword": topic.keyword,
-                    "raw_data": {"query": topic.keyword},
-                    "engagement_data": {"article_count": topic.news_count},
-                }
-            )
+    # ── NewsAPI enrichment for topics without news counts ─────────────────
+    keywords_to_enrich = [t.keyword for t in topics if t.news_count == 0]
+    if keywords_to_enrich:
+        news_counts = await _fetch_newsapi_counts(keywords_to_enrich)
+        
+        for topic in topics:
+            if topic.news_count == 0:
+                enriched_count = news_counts.get(topic.keyword, 0)
+                if enriched_count > 0:
+                    topic.news_count = enriched_count
+                    topic.raw_rows.append(
+                        {
+                            "batch_id": batch_id,
+                            "platform": "google_news",
+                            "topic_keyword": topic.keyword,
+                            "raw_data": {"query": topic.keyword},
+                            "engagement_data": {"article_count": topic.news_count},
+                        }
+                    )
 
     return topics
 

@@ -20,8 +20,9 @@ dependencies = [
     "supabase>=2.0",
 
     # ── Signal collection ────────────────────────────────────────────────
-    "apify-client>=1.7",
     "httpx>=0.27",
+    "feedparser>=6.0",     # RSS feed parser
+    "pytrends>=4.9",       # Google Trends API
 
     # ── AI / ML services ────────────────────────────────────────────────
     "groq>=0.12",

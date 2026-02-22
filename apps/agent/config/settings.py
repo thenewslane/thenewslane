@@ -30,7 +30,6 @@ class Settings(BaseSettings):
     supabase_service_key: str = Field(..., description="Supabase service-role key (bypasses RLS)")
 
     # ── Signal collection ─────────────────────────────────────────────────────
-    apify_api_key: str = Field(default="", description="Apify API key for web scraping actors")
     newsapi_key: str = Field(default="", description="NewsAPI.org key")
     youtube_api_key: str = Field(default="", description="YouTube Data API v3 key")
 
