@@ -208,7 +208,10 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                 
                 if validation.is_valid:
                     log.debug(f"ContentGenerator: validation passed for topic '{topic_title}'")
-                    return {**topic, **content, "content_generated": True}
+                    final_topic = {**topic, **content, "content_generated": True}
+                    log.info(f"🔍 DEBUG: Final topic keys after content generation: {list(final_topic.keys())}")
+                    log.info(f"🔍 DEBUG: Content fields present: summary_16w={bool(final_topic.get('summary_16w'))}, article_50w={bool(final_topic.get('article_50w'))}")
+                    return final_topic
                 
                 # Retry once with correction prompt
                 log.warning(f"ContentGenerator: validation failed for topic '{topic_title}', retrying. Errors: {validation.errors}")
@@ -219,7 +222,10 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
 
                     if correction_validation.is_valid:
                         log.info(f"ContentGenerator: correction successful for topic '{topic_title}'")
-                        return {**topic, **corrected_content, "content_generated": True}
+                        final_topic = {**topic, **corrected_content, "content_generated": True}
+                        log.info(f"🔍 DEBUG: Final topic keys after correction: {list(final_topic.keys())}")
+                        log.info(f"🔍 DEBUG: Content fields present: summary_16w={bool(final_topic.get('summary_16w'))}, article_50w={bool(final_topic.get('article_50w'))}")
+                        return final_topic
                     else:
                         log.warning(f"ContentGenerator: correction still invalid for '{topic_title}', using best-effort first attempt. Errors: {correction_validation.errors}")
                         return {**topic, **content, "content_generated": True}
@@ -235,18 +241,27 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         """Call Claude API for initial content generation."""
         prompt = self._create_generation_prompt(topic)
         
-        response = await self.client.messages.create(
-            model="claude-sonnet-4-6",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=4000,
-            temperature=0.3
-        )
+        try:
+            response = await self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4000,
+                temperature=0.3
+            )
+            log.info(f"🔍 DEBUG: Claude API call successful for topic '{topic.get('title', 'unknown')}'")
+        except Exception as e:
+            log.error(f"🔍 DEBUG: Claude API call FAILED for topic '{topic.get('title', 'unknown')}': {e}")
+            raise
         
         result_text = response.content[0].text.strip()
+        log.info(f"🔍 DEBUG: Claude API response text: {result_text[:200]}...")
         
         # Parse JSON response
         try:
-            return json.loads(result_text)
+            content = json.loads(result_text)
+            log.info(f"🔍 DEBUG: Claude API returned fields: {list(content.keys())}")
+            log.info(f"🔍 DEBUG: Claude content has summary_16w: {bool(content.get('summary_16w'))}, article_50w: {bool(content.get('article_50w'))}")
+            return content
         except json.JSONDecodeError as e:
             log.error(f"ContentGenerator: JSON parse error: {e}")
             log.debug(f"Raw response: {result_text}")
@@ -257,7 +272,7 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         prompt = self._create_correction_prompt(topic, errors, previous_content)
         
         response = await self.client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-3-5-sonnet-20241022",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=4000,
             temperature=0.1  # Lower temperature for corrections

@@ -98,7 +98,7 @@ Return only the category name, nothing else."""
         prompt = self._create_classification_prompt(topic_name, headline_cluster)
         
         response = self.client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-3-haiku-20240307",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=50,
             temperature=0.0

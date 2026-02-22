@@ -175,12 +175,21 @@ def _node_generate_content(state: AgentState) -> dict[str, Any]:
 
     topics = state.get("classified_topics", [])
     log.info("[generate_content] generating for %d topics", len(topics))
+    log.info(f"🔍 DEBUG: Sample topic before content generation: {topics[0].keys() if topics else 'No topics'}")
+    
     try:
         inner = {"batch_id": state["batch_id"], "topics": topics}
         result = generate_content_sync(inner)
         enriched = result.get("topics", [])
         ok = sum(1 for t in enriched if t.get("content_generated"))
         log.info("[generate_content] %d/%d topics succeeded", ok, len(topics))
+        
+        # Debug: Check what's in the enriched topics
+        if enriched:
+            sample_topic = enriched[0]
+            log.info(f"🔍 DEBUG: Sample enriched topic keys: {list(sample_topic.keys())}")
+            log.info(f"🔍 DEBUG: Sample enriched topic content fields: summary_16w={bool(sample_topic.get('summary_16w'))}, article_50w={bool(sample_topic.get('article_50w'))}")
+        
         return {"content_generated_topics": enriched}
     except Exception as exc:
         msg = f"generate_content: {exc}\n{traceback.format_exc()}"
@@ -277,9 +286,14 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             continue
         
         # Skip topics without essential content - don't publish empty articles
+        log.info(f"🔍 DEBUG: Topic '{topic.get('title', 'unknown')[:30]}' keys: {list(topic.keys())}")
+        log.info(f"🔍 DEBUG: Content fields - summary_16w: {bool(topic.get('summary_16w'))}, article_50w: {bool(topic.get('article_50w'))}")
+        log.info(f"🔍 DEBUG: Content generation flag: content_generated={topic.get('content_generated')}")
+        
         if not topic.get("summary_16w") or not topic.get("article_50w"):
             title = topic.get("title", "unknown")[:30]
             log.warning(f"[publish] skipping topic '{title}' - missing content (summary_16w or article_50w)")
+            log.warning(f"[publish] Available keys on skipped topic: {list(topic.keys())}")
             continue
 
         # Determine slug: prefer content-generated, fall back to keyword-based

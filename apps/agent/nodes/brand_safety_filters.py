@@ -164,7 +164,7 @@ Headlines: {headline_cluster}
 Would a major advertiser be comfortable? Answer: SAFE or UNSAFE and one sentence explanation."""
 
             response = self.client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-3-haiku-20240307",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=200,
                 temperature=0.0
