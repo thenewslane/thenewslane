@@ -22,10 +22,10 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
-# Video quality filters
-MIN_VIEW_COUNT = 1000
-MIN_DURATION_SECONDS = 30
-MAX_DURATION_SECONDS = 600  # 10 minutes
+# Video quality filters (reduced by 80% to be more permissive)
+MIN_VIEW_COUNT = 200         # was 1000
+MIN_DURATION_SECONDS = 6     # was 30 seconds
+MAX_DURATION_SECONDS = 120   # was 600 (10 min), now 2 minutes
 SEARCH_HOURS_BACK = 48
 
 

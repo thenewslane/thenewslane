@@ -65,24 +65,24 @@ TOPIC CONTEXT:
 - Viral Tier: {viral_tier} (Score: {viral_score})
 - {urgency_context}
 
-REQUIRED JSON STRUCTURE:
+REQUIRED JSON STRUCTURE (reduced limits by 80%):
 {{
-  "seo_title": "string under 60 characters, factual, no clickbait",
-  "meta_description": "string under 160 characters",
-  "summary_80w": "string of exactly 80 words summarizing why this topic is trending",
-  "article_250w": "string of 250 words, original analysis, factual tone, structured as 3 paragraphs",
+  "seo_title": "string under 12 characters, factual, no clickbait",
+  "meta_description": "string under 32 characters",
+  "summary_16w": "string of exactly 16 words summarizing why this topic is trending",
+  "article_50w": "string of 50 words, original analysis, factual tone",
   "faq": [
     {{"question": "string", "answer": "string"}},
     {{"question": "string", "answer": "string"}}
   ],
-  "facebook_post": "string of 150 words ending with the text ARTICLE_LINK_PLACEHOLDER",
-  "instagram_caption": "string under 125 characters followed by 5 relevant hashtags",
+  "facebook_post": "string of 30 words ending with the text ARTICLE_LINK_PLACEHOLDER",
+  "instagram_caption": "string under 40 characters followed by 1 relevant hashtag",
   "twitter_thread": [
-    "string under 280 characters",
-    "string under 280 characters", 
-    "string under 280 characters"
+    "string under 56 characters",
+    "string under 56 characters", 
+    "string under 56 characters"
   ],
-  "youtube_script": "string of approximately 400 words designed to be spoken aloud in 45 seconds, punchy opening, 3 key facts, strong close",
+  "youtube_script": "string of approximately 80 words designed to be spoken aloud, punchy opening, key facts, strong close",
   "image_prompt": "string describing an abstract cinematic scene related to the topic with no real people faces logos or brand names, photorealistic style, 16:9 composition",
   "iab_categories": ["2-3 strings from IAB Content Taxonomy v3"],
   "slug": "url-safe-lowercase-string-with-hyphens-derived-from-topic-title"
@@ -115,9 +115,9 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         """Validate generated content against requirements."""
         errors = []
         
-        # Required fields check
+        # Required fields check (updated field names)
         required_fields = [
-            "seo_title", "meta_description", "summary_80w", "article_250w",
+            "seo_title", "meta_description", "summary_16w", "article_50w",
             "faq", "facebook_post", "instagram_caption", "twitter_thread",
             "youtube_script", "image_prompt", "iab_categories", "slug"
         ]
@@ -127,24 +127,24 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                 errors.append(f"Missing required field: {field}")
                 continue
         
-        # Length validations
+        # Length validations (reduced by 80% to be more permissive)
         if "seo_title" in content:
-            if len(content["seo_title"]) > 60:
-                errors.append(f"seo_title too long: {len(content['seo_title'])} chars (max 60)")
+            if len(content["seo_title"]) > 12:  # was 60
+                errors.append(f"seo_title too long: {len(content['seo_title'])} chars (max 12)")
         
         if "meta_description" in content:
-            if len(content["meta_description"]) > 160:
-                errors.append(f"meta_description too long: {len(content['meta_description'])} chars (max 160)")
+            if len(content["meta_description"]) > 32:  # was 160
+                errors.append(f"meta_description too long: {len(content['meta_description'])} chars (max 32)")
         
-        if "summary_80w" in content:
-            word_count = len(content["summary_80w"].split())
-            if not (70 <= word_count <= 90):  # Allow ±10 words tolerance
-                errors.append(f"summary_80w wrong length: {word_count} words (target 80 ±10)")
+        if "summary_16w" in content:
+            word_count = len(content["summary_16w"].split())
+            if not (14 <= word_count <= 18):  # was 70-90, now 14-18 (target 16)
+                errors.append(f"summary_16w wrong length: {word_count} words (target 16 ±2)")
         
-        if "article_250w" in content:
-            word_count = len(content["article_250w"].split())
-            if not (240 <= word_count <= 260):  # Allow 10 word tolerance
-                errors.append(f"article_250w wrong length: {word_count} words (target 250 ±10)")
+        if "article_50w" in content:
+            word_count = len(content["article_50w"].split())
+            if not (48 <= word_count <= 52):  # was 240-260, now 48-52 (target 50)
+                errors.append(f"article_50w wrong length: {word_count} words (target 50 ±2)")
         
         if "faq" in content:
             if not isinstance(content["faq"], list) or len(content["faq"]) != 2:
@@ -158,29 +158,29 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
             word_count = len(content["facebook_post"].split())
             if not content["facebook_post"].endswith("ARTICLE_LINK_PLACEHOLDER"):
                 errors.append("facebook_post must end with 'ARTICLE_LINK_PLACEHOLDER'")
-            if not (90 <= word_count <= 200):  # Wide tolerance
-                errors.append(f"facebook_post wrong length: {word_count} words (target 150)")
+            if not (18 <= word_count <= 40):  # was 90-200, now 18-40 (target 30)
+                errors.append(f"facebook_post wrong length: {word_count} words (target 30)")
 
         if "instagram_caption" in content:
-            if len(content["instagram_caption"]) > 200:  # Relaxed from 125
-                errors.append(f"instagram_caption too long: {len(content['instagram_caption'])} chars (max 200)")
+            if len(content["instagram_caption"]) > 40:  # was 200, now 40
+                errors.append(f"instagram_caption too long: {len(content['instagram_caption'])} chars (max 40)")
             # Check for hashtags
             hashtag_count = content["instagram_caption"].count("#")
-            if hashtag_count < 3:  # Relaxed from 5
-                errors.append(f"instagram_caption needs at least 3 hashtags (found {hashtag_count})")
+            if hashtag_count < 1:  # was 3, now 1
+                errors.append(f"instagram_caption needs at least 1 hashtag (found {hashtag_count})")
         
         if "twitter_thread" in content:
             if not isinstance(content["twitter_thread"], list) or len(content["twitter_thread"]) != 3:
                 errors.append("twitter_thread must be array of exactly 3 strings")
             else:
                 for i, tweet in enumerate(content["twitter_thread"]):
-                    if len(tweet) > 280:
-                        errors.append(f"twitter_thread[{i}] too long: {len(tweet)} chars (max 280)")
+                    if len(tweet) > 56:  # was 280, now 56
+                        errors.append(f"twitter_thread[{i}] too long: {len(tweet)} chars (max 56)")
         
         if "youtube_script" in content:
             word_count = len(content["youtube_script"].split())
-            if not (200 <= word_count <= 600):  # Wide tolerance
-                errors.append(f"youtube_script wrong length: {word_count} words (target 400)")
+            if not (40 <= word_count <= 120):  # was 200-600, now 40-120 (target 80)
+                errors.append(f"youtube_script wrong length: {word_count} words (target 80)")
         
         if "iab_categories" in content:
             if not isinstance(content["iab_categories"], list) or not (2 <= len(content["iab_categories"]) <= 3):

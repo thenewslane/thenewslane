@@ -1,9 +1,9 @@
 """
 models/llm_validator.py — LLM-based validator for borderline viral scores.
 
-Calls Claude Haiku 3.5 only for topics whose score falls in the 40–60 band.
-  yes answer → score + 13
-  no  answer → score − 13
+Calls Claude Haiku 3.5 only for topics whose score falls in the 8–12 band.
+  yes answer → score + 2.6
+  no  answer → score - 2.6
 
 Outside the band: score is returned unchanged, no API call is made.
 """
@@ -19,10 +19,11 @@ from utils.logger import get_logger
 log = get_logger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
+# Reduced by 80% to be more permissive
 
-_LLM_BAND_LOW:   float = 40.0
-_LLM_BAND_HIGH:  float = 60.0
-_SCORE_BOOST:    float = 13.0
+_LLM_BAND_LOW:   float = 8.0   # was 40.0
+_LLM_BAND_HIGH:  float = 12.0  # was 60.0
+_SCORE_BOOST:    float = 2.6   # was 13.0
 _HAIKU_MODEL:    str   = "claude-haiku-4-5-20251001"
 
 

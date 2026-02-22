@@ -4,10 +4,10 @@ nodes/viral_prediction_node.py — Orchestrates the viral prediction pipeline.
 For each RawTopic from the collection node:
   1. FeatureEngineer  → FeatureVector
   2. LinearScorer     → 0–100 raw score
-  3. LLMValidator     → adjusted score (only for 40–60 band topics)
-  4. Tier assignment  → Tier 1 (80–100) / Tier 2 (65–79) / Tier 3 (50–64)
+  3. LLMValidator     → adjusted score (only for 8–12 band topics)
+  4. Tier assignment  → Tier 1 (16–100) / Tier 2 (13–15) / Tier 3 (10–12)
   5. DB persistence   → trending_topics + viral_predictions rows
-  6. Returns only topics scoring ≥ 50, sorted by score descending.
+  6. Returns only topics scoring ≥ 10, sorted by score descending.
 """
 
 from __future__ import annotations
@@ -26,10 +26,11 @@ from utils.supabase_client import db
 log = get_logger(__name__)
 
 # ── Tier thresholds (0–100 scale) ─────────────────────────────────────────────
+# Reduced by 80% to be more permissive
 
-TIER_1_MIN: float = 80.0
-TIER_2_MIN: float = 65.0
-TIER_3_MIN: float = 50.0   # below this → rejected
+TIER_1_MIN: float = 16.0   # was 80.0
+TIER_2_MIN: float = 13.0   # was 65.0  
+TIER_3_MIN: float = 10.0   # was 50.0 → below this → rejected
 
 
 # ── ViralPredictionNode ───────────────────────────────────────────────────────
@@ -202,7 +203,7 @@ class ViralPredictionNode:
             scorer_result = self._scorer.score(fv)
             score = scorer_result.raw_score
 
-            # ── 3. LLM validation (40–60 band only) ───────────────────────────
+            # ── 3. LLM validation (8–12 band only) ────────────────────────────
             signal_summary = self._signal_summary(topic)
             validation = self._validator.validate(topic.keyword, score, signal_summary)
             final_score = validation.adjusted_score

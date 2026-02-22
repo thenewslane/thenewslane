@@ -2,10 +2,10 @@
 nodes/viral_predictor.py — LangGraph node: viral prediction scoring.
 
 Delegates to ViralPredictionNode which applies:
-  FeatureEngineer → LinearScorer → LLMValidator (40-60 band) → tier assignment
+  FeatureEngineer → LinearScorer → LLMValidator (8-12 band) → tier assignment
   → trending_topics + viral_predictions DB rows
 
-Topics scoring < 50 are rejected here and excluded from the returned list.
+Topics scoring < 10 are rejected here and excluded from the returned list.
 """
 
 from __future__ import annotations
