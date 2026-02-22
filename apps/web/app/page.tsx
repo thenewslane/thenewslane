@@ -98,8 +98,7 @@ export default async function HomePage() {
             margin:     0,
           }}
         >
-          AI-curated viral stories updated every 5 minutes — across technology,
-          politics, sports, entertainment, and more.
+          AI-curated viral stories across technology, politics, sports, entertainment, and more.
         </p>
       </header>
 
