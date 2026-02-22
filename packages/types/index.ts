@@ -21,6 +21,7 @@ export interface Category {
   id:          number;
   name:        string;
   slug:        string;
+  color:       string | null;
   description: string | null;
   created_at:  ISODate;
   updated_at:  ISODate;
