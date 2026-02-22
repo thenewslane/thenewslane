@@ -114,7 +114,7 @@ def _node_predict_viral(state: AgentState) -> dict[str, Any]:
 def _route_after_viral(state: AgentState) -> str:
     """Route to filter_brand_safety or END depending on viral results."""
     if not state.get("viral_scored_topics"):
-        log.info("[predict_viral] no topics scored ≥ 50 — ending batch %s", state["batch_id"])
+        log.info("[predict_viral] no topics scored ≥ 10 — ending batch %s", state["batch_id"])
         return END  # type: ignore[return-value]
     return "filter_brand_safety"
 
@@ -325,8 +325,8 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             "viral_tier":   topic.get("viral_tier"),
             "viral_score":  topic.get("viral_score"),
             # Content fields — mapped to actual schema columns
-            "summary":      topic.get("summary_80w") or "",
-            "article":      topic.get("article_250w") or "",
+            "summary":      topic.get("summary_16w") or "",
+            "article":      topic.get("article_50w") or "",
             "script":       topic.get("youtube_script") or "",
             "iab_tags":     iab_tags,
             "social_copy":  social_copy or None,

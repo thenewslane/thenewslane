@@ -35,7 +35,7 @@ log = get_logger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-_MERGE_THRESHOLD = 14  # token_set_ratio score (0-100) for fuzzy matching (reduced by 80%)
+_MERGE_THRESHOLD = 70  # token_set_ratio score (0-100) for fuzzy matching (dedup threshold)
 
 # RSS feed URLs
 RSS_FEEDS = {

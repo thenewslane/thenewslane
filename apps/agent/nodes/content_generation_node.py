@@ -65,10 +65,10 @@ TOPIC CONTEXT:
 - Viral Tier: {viral_tier} (Score: {viral_score})
 - {urgency_context}
 
-REQUIRED JSON STRUCTURE (reduced limits by 80%):
+REQUIRED JSON STRUCTURE:
 {{
-  "seo_title": "string under 12 characters, factual, no clickbait",
-  "meta_description": "string under 32 characters",
+  "seo_title": "string under 70 characters, factual, no clickbait",
+  "meta_description": "string under 160 characters",
   "summary_16w": "string of exactly 16 words summarizing why this topic is trending",
   "article_50w": "string of 50 words, original analysis, factual tone",
   "faq": [
@@ -76,11 +76,11 @@ REQUIRED JSON STRUCTURE (reduced limits by 80%):
     {{"question": "string", "answer": "string"}}
   ],
   "facebook_post": "string of 30 words ending with the text ARTICLE_LINK_PLACEHOLDER",
-  "instagram_caption": "string under 40 characters followed by 1 relevant hashtag",
+  "instagram_caption": "string under 200 characters followed by 1 relevant hashtag",
   "twitter_thread": [
-    "string under 56 characters",
-    "string under 56 characters", 
-    "string under 56 characters"
+    "string under 280 characters",
+    "string under 280 characters",
+    "string under 280 characters"
   ],
   "youtube_script": "string of approximately 80 words designed to be spoken aloud, punchy opening, key facts, strong close",
   "image_prompt": "string describing an abstract cinematic scene related to the topic with no real people faces logos or brand names, photorealistic style, 16:9 composition",
@@ -129,12 +129,12 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         
         # Length validations (reduced by 80% to be more permissive)
         if "seo_title" in content:
-            if len(content["seo_title"]) > 12:  # was 60
-                errors.append(f"seo_title too long: {len(content['seo_title'])} chars (max 12)")
-        
+            if len(content["seo_title"]) > 70:
+                errors.append(f"seo_title too long: {len(content['seo_title'])} chars (max 70)")
+
         if "meta_description" in content:
-            if len(content["meta_description"]) > 32:  # was 160
-                errors.append(f"meta_description too long: {len(content['meta_description'])} chars (max 32)")
+            if len(content["meta_description"]) > 160:
+                errors.append(f"meta_description too long: {len(content['meta_description'])} chars (max 160)")
         
         if "summary_16w" in content:
             word_count = len(content["summary_16w"].split())
@@ -162,8 +162,8 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                 errors.append(f"facebook_post wrong length: {word_count} words (target 30)")
 
         if "instagram_caption" in content:
-            if len(content["instagram_caption"]) > 40:  # was 200, now 40
-                errors.append(f"instagram_caption too long: {len(content['instagram_caption'])} chars (max 40)")
+            if len(content["instagram_caption"]) > 200:
+                errors.append(f"instagram_caption too long: {len(content['instagram_caption'])} chars (max 200)")
             # Check for hashtags
             hashtag_count = content["instagram_caption"].count("#")
             if hashtag_count < 1:  # was 3, now 1
@@ -174,8 +174,8 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                 errors.append("twitter_thread must be array of exactly 3 strings")
             else:
                 for i, tweet in enumerate(content["twitter_thread"]):
-                    if len(tweet) > 56:  # was 280, now 56
-                        errors.append(f"twitter_thread[{i}] too long: {len(tweet)} chars (max 56)")
+                    if len(tweet) > 280:
+                        errors.append(f"twitter_thread[{i}] too long: {len(tweet)} chars (max 280)")
         
         if "youtube_script" in content:
             word_count = len(content["youtube_script"].split())
