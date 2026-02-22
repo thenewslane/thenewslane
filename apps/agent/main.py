@@ -1,19 +1,26 @@
 """
 main.py — Agent pipeline entry point.
 
-Run directly to trigger one full pipeline batch immediately (useful for testing):
+Usage
+─────
+Run one batch immediately (useful for testing):
     python main.py
 
-Override the batch ID:
-    BATCH_ID=batch_test_001 python main.py
-
-Start the Inngest scheduler (serves on :8000 for Inngest to call on cron):
+Run continuously every N minutes (built-in loop — no external dependencies):
     python main.py --schedule
+
+Run via Inngest (requires Inngest account + public URL):
+    python main.py --inngest
+
+Override the interval (seconds) or batch ID:
+    PIPELINE_INTERVAL_MINUTES=10 python main.py --schedule
+    BATCH_ID=batch_test_001 python main.py
 """
 
 from __future__ import annotations
 
 import os
+import signal
 import sys
 import time
 import traceback
@@ -23,6 +30,9 @@ from config.settings import settings  # validates .env at import time
 from utils.logger import get_logger
 
 log = get_logger(__name__)
+
+
+# ── Single batch ──────────────────────────────────────────────────────────────
 
 
 def run_pipeline(batch_id: str | None = None) -> dict:
@@ -38,7 +48,6 @@ def run_pipeline(batch_id: str | None = None) -> dict:
 
     Raises on unrecoverable errors (after marking the run as 'failed').
     """
-    # Defer graph import to avoid module-level side effects on --schedule path
     from graph import pipeline  # noqa: PLC0415
     from utils.logger import attach_supabase, detach_supabase  # noqa: PLC0415
     from utils.supabase_client import db  # noqa: PLC0415
@@ -46,7 +55,6 @@ def run_pipeline(batch_id: str | None = None) -> dict:
     bid = batch_id or f"batch_{uuid.uuid4().hex[:12]}"
     log.info("═══ Pipeline batch starting  batch_id=%s ═══", bid)
 
-    # ── Create batch row ──────────────────────────────────────────────────────
     try:
         db.insert_batch(bid)
     except Exception as exc:
@@ -55,21 +63,19 @@ def run_pipeline(batch_id: str | None = None) -> dict:
 
     attach_supabase(bid)
 
-    # ── Initial AgentState ────────────────────────────────────────────────────
     initial_state: dict = {
-        "batch_id":                   bid,
-        "run_start_time":             time.time(),
-        "raw_topics":                 [],
-        "viral_scored_topics":        [],
-        "brand_safe_topics":          [],
-        "classified_topics":          [],
-        "content_generated_topics":   [],
-        "media_generated_topics":     [],
-        "published_topic_ids":        [],
-        "errors":                     [],
+        "batch_id":                 bid,
+        "run_start_time":           time.time(),
+        "raw_topics":               [],
+        "viral_scored_topics":      [],
+        "brand_safe_topics":        [],
+        "classified_topics":        [],
+        "content_generated_topics": [],
+        "media_generated_topics":   [],
+        "published_topic_ids":      [],
+        "errors":                   [],
     }
 
-    # ── Run graph ─────────────────────────────────────────────────────────────
     try:
         final_state = pipeline.invoke(initial_state)
 
@@ -91,12 +97,10 @@ def run_pipeline(batch_id: str | None = None) -> dict:
         detach_supabase()
         raise
 
-    # ── Finalise runs_log ─────────────────────────────────────────────────────
-    raw_count        = len(final_state.get("raw_topics", []))
-    processed_count  = len(final_state.get("viral_scored_topics", []))
-    published_count  = len(final_state.get("published_topic_ids", []))
-    # Rejected = processed but not published (brand safety failures + content failures)
-    rejected_count   = max(0, processed_count - published_count)
+    raw_count       = len(final_state.get("raw_topics", []))
+    processed_count = len(final_state.get("viral_scored_topics", []))
+    published_count = len(final_state.get("published_topic_ids", []))
+    rejected_count  = max(0, processed_count - published_count)
 
     from utils.supabase_client import db as _db2  # noqa: PLC0415
     _db2.log_run(
@@ -115,7 +119,80 @@ def run_pipeline(batch_id: str | None = None) -> dict:
     return final_state
 
 
-def _start_scheduler() -> None:
+# ── Built-in continuous scheduler ────────────────────────────────────────────
+
+
+def _start_loop() -> None:
+    """
+    Run the pipeline on a fixed interval using a self-contained background loop.
+
+    No external dependencies (Inngest, cron daemon, etc.) required.
+
+    Interval: PIPELINE_INTERVAL_MINUTES env var (default 5).
+    Behaviour:
+      • Starts the first run immediately.
+      • Sleeps the configured interval between runs, checking every second so
+        SIGINT / SIGTERM result in an instant, clean shutdown.
+      • Errors in a single run are logged and swallowed — the loop continues.
+    """
+    interval_minutes = int(os.environ.get("PIPELINE_INTERVAL_MINUTES", settings.pipeline_interval_minutes))
+    interval_seconds = interval_minutes * 60
+
+    log.info("╔══════════════════════════════════════════════════╗")
+    log.info("║  theNewslane pipeline scheduler — built-in loop  ║")
+    log.info("║  Interval : every %d minutes                      ║", interval_minutes)
+    log.info("║  Stop     : Ctrl-C or SIGTERM                     ║")
+    log.info("╚══════════════════════════════════════════════════╝")
+
+    # ── Graceful shutdown ─────────────────────────────────────────────────────
+    _stop = [False]
+
+    def _handle_signal(signum: int, _frame: object) -> None:
+        log.info("Signal %d received — stopping after current run…", signum)
+        _stop[0] = True
+
+    signal.signal(signal.SIGINT,  _handle_signal)
+    signal.signal(signal.SIGTERM, _handle_signal)
+
+    # ── Main loop ─────────────────────────────────────────────────────────────
+    run_number = 0
+
+    while not _stop[0]:
+        run_number += 1
+        log.info("┌─ Scheduler: starting run #%d ─────────────────────", run_number)
+        t0 = time.time()
+
+        try:
+            result    = run_pipeline()
+            published = len(result.get("published_topic_ids", []))
+            elapsed   = round(time.time() - t0, 1)
+            log.info(
+                "└─ Run #%d complete — %d topic(s) published in %.1fs",
+                run_number, published, elapsed,
+            )
+        except Exception as exc:
+            elapsed = round(time.time() - t0, 1)
+            log.error("└─ Run #%d FAILED after %.1fs: %s", run_number, elapsed, exc)
+
+        if _stop[0]:
+            break
+
+        next_run_at = time.strftime("%H:%M:%S", time.localtime(time.time() + interval_seconds))
+        log.info("Sleeping %d min — next run at %s  (Ctrl-C to stop)", interval_minutes, next_run_at)
+
+        # Sleep in 1-second ticks so Ctrl-C is instant
+        for _ in range(interval_seconds):
+            if _stop[0]:
+                break
+            time.sleep(1)
+
+    log.info("Scheduler stopped after %d run(s).", run_number)
+
+
+# ── Inngest scheduler (optional, requires external account) ──────────────────
+
+
+def _start_inngest() -> None:
     """Start the Inngest Flask server so the CRON trigger can be served."""
     from scheduler import create_app  # noqa: PLC0415
 
@@ -124,14 +201,23 @@ def _start_scheduler() -> None:
     flask_app.run(host="0.0.0.0", port=8000, debug=False)
 
 
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+
 def main() -> None:
     args = sys.argv[1:]
 
     if "--schedule" in args:
-        _start_scheduler()
+        # Self-contained built-in loop — no external dependencies
+        _start_loop()
         return
 
-    # Direct run — execute one batch immediately
+    if "--inngest" in args:
+        # Inngest-managed CRON (requires Inngest account + public URL)
+        _start_inngest()
+        return
+
+    # Direct single run
     batch_id = os.environ.get("BATCH_ID")
     try:
         final_state = run_pipeline(batch_id)
@@ -146,7 +232,7 @@ def main() -> None:
         print(f"  Errors           : {len(errors)}")
         print(f"  Run time         : {elapsed}s")
         if errors:
-            print(f"  Error details:")
+            print("  Error details:")
             for e in errors:
                 print(f"    • {e[:140]}")
         print(f"{'═' * 60}\n")

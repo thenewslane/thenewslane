@@ -60,6 +60,7 @@ class Settings(BaseSettings):
 
     # ── Pipeline tuning ───────────────────────────────────────────────────────
     pipeline_cron: str = Field(default="*/5 * * * *", description="Inngest CRON expression (default: every 5 minutes)")
+    pipeline_interval_minutes: int = Field(default=5, description="Built-in loop interval in minutes (used by --schedule)")
     batch_size_limit: int = Field(default=50, description="Max topics to process per batch")
     trends_geo: str = Field(default="US", description="ISO country code for Google Trends geo filter")
     newsapi_max_topics: int = Field(default=20, description="Max topics to query in NewsAPI per batch")
