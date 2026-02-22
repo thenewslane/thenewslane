@@ -96,6 +96,38 @@ def _find_canonical(keyword: str, canonical: list[str]) -> str | None:
     return None
 
 
+def _normalize_platform(platform: str) -> str:
+    """
+    Normalize platform names to match Supabase check constraint values.
+    
+    Accepted values: twitter, google_trends, reddit, newsapi, rss
+    """
+    platform_mapping = {
+        # Google Trends sources
+        "google_trends": "google_trends",
+        
+        # News sources → newsapi
+        "google_news": "newsapi", 
+        "newsapi": "newsapi",
+        "hacker_news": "newsapi",  # Tech news → newsapi
+        
+        # RSS feeds → rss
+        "rss_feeds": "rss",
+        "rss": "rss",
+        
+        # Social media (for future use)
+        "twitter": "twitter",
+        "reddit": "reddit",
+    }
+    
+    normalized = platform_mapping.get(platform, platform)
+    if normalized not in ["twitter", "google_trends", "reddit", "newsapi", "rss"]:
+        log.warning(f"Unknown platform '{platform}' mapped to 'newsapi' as fallback")
+        return "newsapi"
+    
+    return normalized
+
+
 # ---------------------------------------------------------------------------
 # Source 1: Google Trends RSS
 # ---------------------------------------------------------------------------
@@ -142,7 +174,7 @@ async def _fetch_google_trends_rss() -> list[dict[str, Any]]:
                         "keyword": keyword,
                         "traffic": traffic_info,
                         "platform_row": {
-                            "platform": "google_trends",
+                            "platform": _normalize_platform("google_trends"),
                             "topic_keyword": keyword,
                             "source_id": f"trends_rss_{feed_name}",
                             "title": raw_title,
@@ -228,7 +260,7 @@ async def _fetch_newsapi_category(client: httpx.AsyncClient, category: str) -> l
                 "keyword": keyword,
                 "rank": rank,
                 "platform_row": {
-                    "platform": "google_news",
+                    "platform": _normalize_platform("google_news"),
                     "topic_keyword": keyword,
                     "title": raw_title,
                     "url": article.get("url", ""),
@@ -307,7 +339,7 @@ async def _fetch_single_rss_feed(client: httpx.AsyncClient, feed_name: str, feed
                 "keyword": keyword,
                 "rank": i + 1,
                 "platform_row": {
-                    "platform": "rss_feeds",
+                    "platform": _normalize_platform("rss_feeds"),
                     "topic_keyword": keyword,
                     "title": title,
                     "url": link,
@@ -378,7 +410,7 @@ async def _fetch_pytrends() -> list[dict[str, Any]]:
                 "keyword": keyword,
                 "rank": topic_data["rank"],
                 "platform_row": {
-                    "platform": "google_trends",
+                    "platform": _normalize_platform("google_trends"),
                     "topic_keyword": keyword,
                     "title": topic,
                     "source_id": f"pytrends_{topic_data['rank']}",
@@ -451,7 +483,7 @@ async def _fetch_hacker_news() -> list[dict[str, Any]]:
                     "keyword": keyword,
                     "score": story.get("score", 0),
                     "platform_row": {
-                        "platform": "hacker_news",
+                        "platform": _normalize_platform("hacker_news"),
                         "topic_keyword": keyword,
                         "title": title,
                         "url": story.get("url", ""),
@@ -561,11 +593,13 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     # Process Google Trends RSS
     for item in source_data["google_trends_rss"]:
         topic = _get_or_create(item["keyword"])
-        if "google_trends" not in topic.platforms:
-            topic.platforms.append("google_trends")
+        normalized_platform = _normalize_platform("google_trends")
+        if normalized_platform not in topic.platforms:
+            topic.platforms.append(normalized_platform)
         if topic.trends_interest is None:
             topic.trends_interest = item.get("traffic", 0)
         pr = dict(item["platform_row"])
+        pr["platform"] = normalized_platform  # Ensure normalized platform is used
         pr["batch_id"] = batch_id
         pr["topic_keyword"] = topic.keyword
         topic.raw_rows.append(pr)
@@ -574,10 +608,12 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     # Process NewsAPI
     for item in source_data["newsapi"]:
         topic = _get_or_create(item["keyword"])
-        if "google_news" not in topic.platforms:
-            topic.platforms.append("google_news")
+        normalized_platform = _normalize_platform("google_news")
+        if normalized_platform not in topic.platforms:
+            topic.platforms.append(normalized_platform)
         topic.news_count = max(topic.news_count, 1)  # Indicate news presence
         pr = dict(item["platform_row"])
+        pr["platform"] = normalized_platform  # Ensure normalized platform is used
         pr["batch_id"] = batch_id
         pr["topic_keyword"] = topic.keyword
         topic.raw_rows.append(pr)
@@ -585,10 +621,12 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     # Process RSS Feeds
     for item in source_data["rss_feeds"]:
         topic = _get_or_create(item["keyword"])
-        if "rss_feeds" not in topic.platforms:
-            topic.platforms.append("rss_feeds")
+        normalized_platform = _normalize_platform("rss_feeds")
+        if normalized_platform not in topic.platforms:
+            topic.platforms.append(normalized_platform)
         topic.news_count = max(topic.news_count, 1)  # Indicate news presence
         pr = dict(item["platform_row"])
+        pr["platform"] = normalized_platform  # Ensure normalized platform is used
         pr["batch_id"] = batch_id
         pr["topic_keyword"] = topic.keyword
         topic.raw_rows.append(pr)
@@ -596,11 +634,13 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     # Process Pytrends
     for item in source_data["pytrends"]:
         topic = _get_or_create(item["keyword"])
-        if "google_trends" not in topic.platforms:
-            topic.platforms.append("google_trends")
+        normalized_platform = _normalize_platform("google_trends")
+        if normalized_platform not in topic.platforms:
+            topic.platforms.append(normalized_platform)
         if topic.trends_interest is None:
             topic.trends_interest = 100 - (item.get("rank", 20) * 5)  # Convert rank to interest
         pr = dict(item["platform_row"])
+        pr["platform"] = normalized_platform  # Ensure normalized platform is used
         pr["batch_id"] = batch_id
         pr["topic_keyword"] = topic.keyword
         topic.raw_rows.append(pr)
@@ -608,12 +648,14 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     # Process Hacker News
     for item in source_data["hacker_news"]:
         topic = _get_or_create(item["keyword"])
-        if "hacker_news" not in topic.platforms:
-            topic.platforms.append("hacker_news")
+        normalized_platform = _normalize_platform("hacker_news")
+        if normalized_platform not in topic.platforms:
+            topic.platforms.append(normalized_platform)
         # Use HN score as a tech interest metric
         if topic.trends_interest is None:
             topic.trends_interest = min(100, item.get("score", 0) // 5)  # Scale down HN scores
         pr = dict(item["platform_row"])
+        pr["platform"] = normalized_platform  # Ensure normalized platform is used
         pr["batch_id"] = batch_id
         pr["topic_keyword"] = topic.keyword
         topic.raw_rows.append(pr)
@@ -634,7 +676,7 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
                     topic.raw_rows.append(
                         {
                             "batch_id": batch_id,
-                            "platform": "google_news",
+                            "platform": _normalize_platform("google_news"),
                             "topic_keyword": topic.keyword,
                             "raw_data": {"query": topic.keyword},
                             "engagement_data": {"article_count": topic.news_count},
