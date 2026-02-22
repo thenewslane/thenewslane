@@ -7,6 +7,7 @@
  *
  * Features:
  *  • Category filter tabs
+ *  • Fresh-content splash banner (polls every 60 s)
  *  • Responsive 1 → 2 → 3 column grid
  *  • Infinite scroll via IntersectionObserver
  *  • Shimmer skeleton while loading
@@ -20,6 +21,7 @@ import type { TrendingTopic, Category } from '@platform/types';
 import { TopicCard } from '@platform/ui/web';
 import { CategoryFilter } from './CategoryFilter';
 import { TopicSkeleton } from './TopicSkeleton';
+import { FreshContentBanner } from './FreshContentBanner';
 
 const PAGE_SIZE = 12;
 
@@ -37,6 +39,11 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
   const [loading,  setLoading]  = useState(false);
   const [hasMore,  setHasMore]  = useState(initialTopics.length === PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Track the newest published_at we've seen so the banner knows what's "new"
+  const [latestPublishedAt, setLatestPublishedAt] = useState<string | null>(
+    initialTopics[0]?.published_at ?? null,
+  );
 
   // ── Fetch topics from Supabase ─────────────────────────────────────────────
   const fetchTopics = useCallback(async (
@@ -70,6 +77,11 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
       const rows = (data ?? []) as TrendingTopic[];
       setTopics(prev => append ? [...prev, ...rows] : rows);
       setHasMore(rows.length === PAGE_SIZE);
+
+      // Advance the baseline so the banner doesn't re-fire for just-loaded content
+      if (!append && rows[0]?.published_at) {
+        setLatestPublishedAt(rows[0].published_at);
+      }
     } catch (err) {
       console.error('[TopicFeed] fetch error', err);
     } finally {
@@ -100,72 +112,87 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
     return () => observer.disconnect();
   }, [hasMore, loading, page, category, fetchTopics]);
 
+  // Callback for FreshContentBanner — reloads page 1 and scrolls to top
+  const handleFreshRefresh = useCallback(() => {
+    setPage(1);
+    fetchTopics(1, category, false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [category, fetchTopics]);
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div>
-      {/* ── Category filter ── */}
-      <div style={{ marginBottom: 'var(--spacing-6)' }}>
-        <CategoryFilter
-          categories={initialCategories}
-          activeCategory={category}
-          onSelect={slug => { setCategory(slug); }}
-        />
-      </div>
+    <>
+      {/* ── Fresh-content notification banner ── */}
+      <FreshContentBanner
+        latestPublishedAt={latestPublishedAt}
+        onRefresh={handleFreshRefresh}
+      />
 
-      {/* ── Grid ── */}
-      <div
-        style={{
-          display:             'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
-          gap:                 'var(--spacing-4)',
-        }}
-      >
-        {topics.map(topic => (
-          <TopicCard
-            key={topic.id}
-            topic={topic}
-            onPress={t => router.push(`/trending/${t.slug}`)}
+      <div>
+        {/* ── Category filter ── */}
+        <div style={{ marginBottom: 'var(--spacing-6)' }}>
+          <CategoryFilter
+            categories={initialCategories}
+            activeCategory={category}
+            onSelect={slug => { setCategory(slug); }}
           />
-        ))}
+        </div>
 
-        {/* Skeleton cards while loading next page */}
-        {loading && Array.from({ length: PAGE_SIZE }).map((_, i) => (
-          <TopicSkeleton key={`skeleton-${i}`} />
-        ))}
-      </div>
-
-      {/* ── Empty state ── */}
-      {!loading && topics.length === 0 && (
+        {/* ── Grid ── */}
         <div
           style={{
-            textAlign:  'center',
-            padding:    'var(--spacing-16) var(--spacing-4)',
-            color:      'var(--color-text-muted-light)',
-            fontFamily: 'var(--font-body)',
-            fontSize:   '15px',
+            display:             'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+            gap:                 'var(--spacing-4)',
           }}
         >
-          No trending topics found for this category.
+          {topics.map(topic => (
+            <TopicCard
+              key={topic.id}
+              topic={topic}
+              onPress={t => router.push(`/trending/${t.slug}`)}
+            />
+          ))}
+
+          {/* Skeleton cards while loading next page */}
+          {loading && Array.from({ length: PAGE_SIZE }).map((_, i) => (
+            <TopicSkeleton key={`skeleton-${i}`} />
+          ))}
         </div>
-      )}
 
-      {/* ── Infinite scroll sentinel ── */}
-      <div ref={sentinelRef} style={{ height: 1 }} aria-hidden />
+        {/* ── Empty state ── */}
+        {!loading && topics.length === 0 && (
+          <div
+            style={{
+              textAlign:  'center',
+              padding:    'var(--spacing-16) var(--spacing-4)',
+              color:      'var(--color-text-muted-light)',
+              fontFamily: 'var(--font-body)',
+              fontSize:   '15px',
+            }}
+          >
+            No trending topics found for this category.
+          </div>
+        )}
 
-      {/* ── End of feed message ── */}
-      {!hasMore && topics.length > 0 && !loading && (
-        <p
-          style={{
-            textAlign:  'center',
-            marginTop:  'var(--spacing-8)',
-            fontSize:   '13px',
-            fontFamily: 'var(--font-body)',
-            color:      'var(--color-text-muted-light)',
-          }}
-        >
-          You&apos;ve reached the end of the feed.
-        </p>
-      )}
-    </div>
+        {/* ── Infinite scroll sentinel ── */}
+        <div ref={sentinelRef} style={{ height: 1 }} aria-hidden />
+
+        {/* ── End of feed message ── */}
+        {!hasMore && topics.length > 0 && !loading && (
+          <p
+            style={{
+              textAlign:  'center',
+              marginTop:  'var(--spacing-8)',
+              fontSize:   '13px',
+              fontFamily: 'var(--font-body)',
+              color:      'var(--color-text-muted-light)',
+            }}
+          >
+            You&apos;ve reached the end of the feed.
+          </p>
+        )}
+      </div>
+    </>
   );
 }

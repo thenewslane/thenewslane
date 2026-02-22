@@ -1,7 +1,7 @@
 """
 scheduler.py — Inngest CRON scheduler for the theNewslane pipeline.
 
-Registers the pipeline as an Inngest function triggered every 4 hours.
+Registers the pipeline as an Inngest function triggered every 5 minutes.
 Serve with Flask so Inngest can invoke it:
 
     python main.py --schedule        # recommended entry point
@@ -59,7 +59,7 @@ def _send_slack(message: str) -> None:
 )
 def run_pipeline_cron(ctx: inngest.Context, step: inngest.Step) -> dict:
     """
-    Triggered by Inngest CRON every 4 hours.
+    Triggered by Inngest CRON every 5 minutes.
 
     1. Creates a batch_id
     2. Initialises AgentState

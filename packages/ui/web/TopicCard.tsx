@@ -2,22 +2,44 @@
 
 import React, { useCallback } from 'react';
 import type { TrendingTopic } from '@platform/types';
-import { CategoryBadge }    from './CategoryBadge';
-import { ViralIndicator }   from './ViralIndicator';
+import { CategoryBadge }     from './CategoryBadge';
+import { ViralIndicator }    from './ViralIndicator';
 import { SourceAttribution } from './SourceAttribution';
-import { truncateWords }    from './utils';
+import { truncateWords }     from './utils';
 
 export interface TopicCardProps {
-  topic:   TrendingTopic;
-  onPress: (topic: TrendingTopic) => void;
-  /** Disable the card link (e.g. while navigating). */
+  topic:    TrendingTopic;
+  onPress:  (topic: TrendingTopic) => void;
   disabled?: boolean;
 }
 
+/** Deterministic pastel-dark gradient from a string seed (category / title). */
+function seedGradient(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const palettes = [
+    ['#0f3460', '#16213e'],
+    ['#1a1a2e', '#533483'],
+    ['#1b262c', '#0f4c75'],
+    ['#1a1a2e', '#16213e'],
+    ['#2d132c', '#ee4540'],
+    ['#1b1b2f', '#162447'],
+    ['#0a3d62', '#0c2461'],
+    ['#130f40', '#30336b'],
+  ];
+  const [a, b] = palettes[Math.abs(hash) % palettes.length];
+  return `linear-gradient(135deg, ${a} 0%, ${b} 100%)`;
+}
+
 export function TopicCard({ topic, onPress, disabled = false }: TopicCardProps) {
-  const summary = topic.summary ? truncateWords(topic.summary, 80) : null;
+  const summary      = topic.summary ? truncateWords(topic.summary, 80) : null;
   const categoryName = topic.category?.name ?? null;
   const categorySlug = topic.category?.slug ?? null;
+  const initial      = (topic.title ?? '?').charAt(0).toUpperCase();
+  const gradient     = seedGradient(categorySlug ?? topic.title ?? '');
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -68,69 +90,98 @@ export function TopicCard({ topic, onPress, disabled = false }: TopicCardProps) 
         (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
       }}
       onFocus={e => {
-        (e.currentTarget as HTMLElement).style.outline =
-          '2px solid var(--color-primary)';
+        (e.currentTarget as HTMLElement).style.outline = '2px solid var(--color-primary)';
       }}
       onBlur={e => {
         (e.currentTarget as HTMLElement).style.outline = 'none';
       }}
     >
-      {/* Thumbnail */}
-      {topic.thumbnail_url && (
-        <div
-          style={{
-            position:       'relative',
-            width:          '100%',
-            paddingTop:     '52.5%', // 16:8.4 aspect ratio
-            backgroundColor: 'var(--color-background-dark)',
-            overflow:       'hidden',
-          }}
-        >
+      {/* ── Thumbnail / placeholder ── */}
+      <div
+        style={{
+          position:        'relative',
+          width:           '100%',
+          paddingTop:      '52.5%',
+          overflow:        'hidden',
+          background:      gradient,
+          flexShrink:      0,
+        }}
+      >
+        {topic.thumbnail_url ? (
           <img
             src={topic.thumbnail_url}
             alt={topic.title}
             loading="lazy"
             style={{
-              position:   'absolute',
-              inset:      0,
-              width:      '100%',
-              height:     '100%',
-              objectFit:  'cover',
+              position:  'absolute',
+              inset:     0,
+              width:     '100%',
+              height:    '100%',
+              objectFit: 'cover',
             }}
           />
-        </div>
-      )}
+        ) : (
+          /* Placeholder: big initial letter centred over gradient */
+          <span
+            aria-hidden
+            style={{
+              position:      'absolute',
+              inset:         0,
+              display:       'flex',
+              alignItems:    'center',
+              justifyContent:'center',
+              fontSize:      'clamp(40px, 8vw, 64px)',
+              fontWeight:    800,
+              fontFamily:    'var(--font-heading)',
+              color:         'rgba(255,255,255,0.18)',
+              userSelect:    'none',
+              letterSpacing: '-2px',
+            }}
+          >
+            {initial}
+          </span>
+        )}
 
-      {/* Content */}
+        {/* Category badge overlay on thumbnail */}
+        {categoryName && categorySlug && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom:   'var(--spacing-2)',
+              left:     'var(--spacing-2)',
+            }}
+          >
+            <CategoryBadge category={categorySlug} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Text content ── */}
       <div
         style={{
-          display:        'flex',
-          flexDirection:  'column',
-          gap:            'var(--spacing-2)',
-          padding:        'var(--spacing-3)',
-          flexGrow:       1,
+          display:       'flex',
+          flexDirection: 'column',
+          gap:           'var(--spacing-2)',
+          padding:       'var(--spacing-3)',
+          flexGrow:      1,
         }}
       >
-        {/* Badges row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', flexWrap: 'wrap' }}>
-          {topic.viral_tier != null && topic.viral_score != null && (
+        {/* Viral indicator */}
+        {topic.viral_tier != null && topic.viral_score != null && (
+          <div>
             <ViralIndicator tier={topic.viral_tier} score={topic.viral_score} />
-          )}
-          {categoryName && categorySlug && (
-            <CategoryBadge category={categorySlug} />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Title */}
         <h2
           style={{
-            margin:      0,
-            fontSize:    '16px',
-            fontWeight:  700,
-            fontFamily:  'var(--font-heading)',
-            color:       'var(--color-text-primary-light)',
-            lineHeight:  1.35,
-            // 2-line clamp
+            margin:             0,
+            fontSize:           '15px',
+            fontWeight:         700,
+            fontFamily:         'var(--font-heading)',
+            color:              'var(--color-text-primary-light)',
+            lineHeight:         1.35,
             display:            '-webkit-box',
             WebkitLineClamp:    2,
             WebkitBoxOrient:    'vertical' as const,
@@ -140,20 +191,19 @@ export function TopicCard({ topic, onPress, disabled = false }: TopicCardProps) 
           {topic.title}
         </h2>
 
-        {/* Summary — 3-line clamp */}
+        {/* Summary */}
         {summary && (
           <p
             style={{
-              margin:      0,
-              fontSize:    '13px',
-              lineHeight:  1.55,
-              fontFamily:  'var(--font-body)',
-              color:       'var(--color-text-secondary-light)',
-              // 3-line clamp
-              display:            '-webkit-box',
-              WebkitLineClamp:    3,
-              WebkitBoxOrient:    'vertical' as const,
-              overflow:           'hidden',
+              margin:          0,
+              fontSize:        '13px',
+              lineHeight:      1.55,
+              fontFamily:      'var(--font-body)',
+              color:           'var(--color-text-secondary-light)',
+              display:         '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical' as const,
+              overflow:        'hidden',
             }}
           >
             {summary}
@@ -175,7 +225,6 @@ export function TopicCard({ topic, onPress, disabled = false }: TopicCardProps) 
             sourceName="theNewslane"
             publishedAt={topic.published_at ?? topic.created_at}
           />
-
           <span
             aria-hidden
             style={{
