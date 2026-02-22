@@ -99,15 +99,15 @@ class MediaGenerator:
     """AI media generation service using Replicate APIs."""
     
     def __init__(self):
-        if not settings.replicate_api_key:
-            raise ValueError("REPLICATE_API_KEY is required for MediaGenerator")
-        
         if replicate is None:
-            log.warning("replicate package unavailable - thumbnails will be skipped due to Python 3.14 compatibility issues")
+            log.warning("replicate package unavailable - video generation skipped (Python 3.14 compatibility)")
             self.replicate_client = None
-            
-        if replicate is not None:
+        elif settings.replicate_api_key:
             self.replicate_client = replicate.Client(api_token=settings.replicate_api_key)
+        else:
+            log.warning("REPLICATE_API_KEY not set - video generation will be skipped")
+            self.replicate_client = None
+
         self.storage = StorageManager()
         self.http_client = httpx.AsyncClient(timeout=60.0)
     
@@ -133,85 +133,120 @@ class MediaGenerator:
             log.error(f"Download failed for {url}: {e}")
             raise
     
+    # ── Category-specific Ghibli scene hints ──────────────────────────────────
+    _CATEGORY_HINTS: dict[str, str] = {
+        "technology":    "glowing holographic displays and warm lamplight, a cozy futuristic workshop filled with intricate machines",
+        "politics":      "grand parliament hall or government plaza with dramatic golden-hour light and sweeping stone architecture",
+        "sports":        "vast open stadium at dusk with crowd silhouettes and radiant floodlights",
+        "entertainment": "theatrical stage or cinema interior with warm amber spotlights and velvet curtains",
+        "health":        "tranquil forest clearing with sunlight filtering through ancient trees, gentle mist",
+        "science":       "observatory dome or open-air laboratory under a star-filled sky with wonder and discovery",
+        "business":      "bustling waterfront market or gleaming city skyline at golden hour",
+        "world":         "iconic landmark or sweeping panoramic landscape bathed in soft morning light",
+        "environment":   "lush rolling hills, rivers, and forests under dramatic cloud-streaked skies",
+        "default":       "sweeping cinematic landscape with rich atmospheric detail and dramatic skies",
+    }
+
+    def _build_ghibli_prompt(self, topic: Dict[str, Any]) -> str:
+        """
+        Build a Studio Ghibli-style DALL-E prompt from the topic's news context.
+
+        Combines:
+          • The LLM-generated image_prompt (real-world scene from the news)
+          • Topic title and headline cluster for factual grounding
+          • Category-specific Ghibli environment hints
+        """
+        scene = (topic.get("image_prompt") or "").strip()
+        title = (topic.get("title") or "").strip()
+        headlines = (topic.get("headline_cluster") or "").strip()
+        category = (topic.get("category") or "default").strip().lower()
+
+        # Fallback scene from title/headlines if image_prompt is missing
+        if not scene:
+            context = headlines[:200] if headlines else title
+            scene = f"A scene capturing the atmosphere of this news event: {context}"
+
+        # Category hint (use closest match or default)
+        hint = self._CATEGORY_HINTS.get(category, self._CATEGORY_HINTS["default"])
+
+        prompt = (
+            "Studio Ghibli style illustration, hand-painted animation art by Hayao Miyazaki, "
+            "watercolor textures, lush and vivid colour palette, soft diffused natural lighting, "
+            "highly detailed painterly backgrounds, dreamlike atmosphere, anime art style. "
+            f"Scene inspired by real news: {scene}. "
+            f"Environment style: {hint}. "
+            "No human faces, no text, no logos, no brand names, no real people. "
+            "16:9 cinematic composition."
+        )
+        return prompt[:4000]  # DALL-E 3 character limit
+
     async def generate_thumbnail(self, topic: Dict[str, Any]) -> Dict[str, str]:
         """
-        Generate thumbnail image using OpenAI DALL-E 3 (replaces Replicate Flux).
-        
-        Args:
-            topic: Topic dict containing image_prompt
-            
+        Generate a Studio Ghibli-style thumbnail via OpenAI DALL-E 3.
+
+        The prompt is built from the topic's news context (title, headline cluster,
+        image_prompt scene description) and wrapped in Ghibli art-direction.
+
         Returns:
-            Dict with thumbnail_url
+            Dict with thumbnail_url (Supabase public URL) or None on failure.
         """
-        image_prompt = topic.get("image_prompt", "")
         topic_id = topic.get("id", f"topic_{uuid.uuid4().hex[:8]}")
-        
-        if not image_prompt:
-            log.warning(f"No image_prompt for topic {topic_id} - skipping thumbnail")
-            return {"thumbnail_url": None}
-        
-        # Check if OpenAI API key is configured
+
         if not getattr(settings, 'openai_api_key', None) or not settings.openai_api_key:
             log.warning(f"OPENAI_API_KEY not configured - skipping thumbnail for {topic_id}")
             return {"thumbnail_url": None}
-        
-        log.info(f"Generating thumbnail for topic {topic_id} using OpenAI DALL-E 3")
-        
+
+        dall_e_prompt = self._build_ghibli_prompt(topic)
+        log.info(f"Generating Ghibli-style thumbnail for topic {topic_id}")
+        log.debug(f"DALL-E prompt ({len(dall_e_prompt)} chars): {dall_e_prompt[:120]}…")
+
         try:
             # Call OpenAI DALL-E 3 API
             payload = {
-                "model": "dall-e-3",
-                "prompt": image_prompt[:4000],  # DALL-E has 4000 char limit
-                "size": "1792x1024",  # Closest to our 1344x768 requirement
-                "quality": "standard",  # or "hd" for higher quality
-                "n": 1
+                "model":   "dall-e-3",
+                "prompt":  dall_e_prompt,
+                "size":    "1792x1024",
+                "quality": "hd",
+                "n":       1,
             }
             
             headers = {
                 "Authorization": f"Bearer {settings.openai_api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
-            
+
             async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
                     "https://api.openai.com/v1/images/generations",
                     json=payload,
-                    headers=headers
+                    headers=headers,
                 )
-                
+
                 if response.status_code != 200:
                     raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
-                
+
                 data = response.json()
                 generated_url = data["data"][0]["url"]
-                
-                log.info(f"OpenAI generated image URL: {generated_url}")
-                
+                log.info(f"DALL-E image generated for topic {topic_id}")
+
                 # Download the generated image
                 img_response = await client.get(generated_url)
                 if img_response.status_code != 200:
                     raise Exception(f"Failed to download generated image: {img_response.status_code}")
-                
-                # Save to temporary file
-                import tempfile
-                tmp_path = f"/tmp/dall_e_thumbnail_{topic_id}.jpg"
+
+                # Save to temp file then upload to Supabase
+                tmp_path = f"/tmp/dall_e_thumbnail_{topic_id}.png"
                 with open(tmp_path, "wb") as f:
                     f.write(img_response.content)
-                
-                # Upload to Supabase Storage
-                public_url = await self.storage.upload_file(tmp_path, "thumbnails", f"{topic_id}.jpg")
-                
-                # Clean up temp file
+
+                public_url = await self.storage.upload_file(tmp_path, "thumbnails", f"{topic_id}.png")
                 Path(tmp_path).unlink(missing_ok=True)
-                
-                log.info(f"Thumbnail uploaded to Supabase: {public_url}")
+
+                log.info(f"Ghibli thumbnail uploaded to Supabase: {public_url}")
                 return {"thumbnail_url": public_url}
-                
+
         except Exception as e:
-            log.error(f"OpenAI thumbnail generation failed for topic {topic_id}: {e}")
-            log.error(f"  Image prompt: {image_prompt[:100]}...")
-            
-            # Return None instead of crashing
+            log.error(f"Thumbnail generation failed for topic {topic_id}: {e}")
             return {"thumbnail_url": None}
 
     async def generate_ai_video(self, topic: Dict[str, Any]) -> Dict[str, Any]:

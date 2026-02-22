@@ -83,7 +83,7 @@ REQUIRED JSON STRUCTURE:
     "string under 280 characters"
   ],
   "youtube_script": "string of approximately 80 words designed to be spoken aloud, punchy opening, key facts, strong close",
-  "image_prompt": "string describing an abstract cinematic scene related to the topic with no real people faces logos or brand names, photorealistic style, 16:9 composition",
+  "image_prompt": "string describing the specific real-world setting or environment from this news story (e.g. the actual location, landmark, type of environment, or scenario where this event is unfolding). Be concrete and news-accurate. No real people, faces, logos, or brand names. This scene will be rendered in Studio Ghibli animation style, so describe it as a place or environment, not as a person or action shot.",
   "iab_categories": ["2-3 strings from IAB Content Taxonomy v3"],
   "slug": "url-safe-lowercase-string-with-hyphens-derived-from-topic-title"
 }}
