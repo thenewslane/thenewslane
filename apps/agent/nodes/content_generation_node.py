@@ -243,7 +243,7 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         
         try:
             response = await self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-3-haiku-20240307",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=4000,
                 temperature=0.3
@@ -272,7 +272,7 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         prompt = self._create_correction_prompt(topic, errors, previous_content)
         
         response = await self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-haiku-20240307",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=4000,
             temperature=0.1  # Lower temperature for corrections
