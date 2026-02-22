@@ -3,7 +3,6 @@ import React from 'react';
 export interface ViralIndicatorProps {
   tier:       1 | 2 | 3;
   score:      number;   // 0.0 – 1.0
-  showScore?: boolean;  // default true
   showLabel?: boolean;  // default true
 }
 
@@ -27,7 +26,7 @@ function FlameIcon() {
   );
 }
 
-function TrendingIcon() {
+function RisingIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
@@ -35,33 +34,18 @@ function TrendingIcon() {
   );
 }
 
-function DotIcon() {
-  return (
-    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <circle cx="12" cy="12" r="8"/>
-    </svg>
-  );
-}
-
-const TIER_ICON: Record<1 | 2 | 3, React.ReactElement> = {
-  1: <FlameIcon />,
-  2: <TrendingIcon />,
-  3: <DotIcon />,
-};
-
 export function ViralIndicator({
   tier,
   score,
-  showScore = true,
   showLabel = true,
 }: ViralIndicatorProps) {
-  const color = TIER_COLOR[tier];
-  const label = TIER_LABEL[tier];
-  const pct   = Math.round(score * 100);
+  const color  = TIER_COLOR[tier];
+  const label  = TIER_LABEL[tier];
+  const isHot  = score >= 0.8;
 
   return (
     <span
-      aria-label={`${label}${showScore ? ` — ${pct}%` : ''}`}
+      aria-label={label}
       style={{
         display:    'inline-flex',
         alignItems: 'center',
@@ -72,8 +56,7 @@ export function ViralIndicator({
         fontFamily: 'var(--font-body)',
       }}
     >
-      {TIER_ICON[tier]}
-      {showScore && <span>{pct}%</span>}
+      {isHot ? <FlameIcon /> : <RisingIcon />}
       {showLabel && (
         <span style={{ fontWeight: 400, opacity: 0.85 }}>{label}</span>
       )}
