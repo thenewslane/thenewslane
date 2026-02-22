@@ -188,7 +188,7 @@ def _node_generate_content(state: AgentState) -> dict[str, Any]:
         if enriched:
             sample_topic = enriched[0]
             log.info(f"🔍 DEBUG: Sample enriched topic keys: {list(sample_topic.keys())}")
-            log.info(f"🔍 DEBUG: Sample enriched topic content fields: summary_30w={bool(sample_topic.get('summary_30w'))}, article_50w={bool(sample_topic.get('article_50w'))}")
+            log.info(f"🔍 DEBUG: Sample enriched topic content fields: summary_30w={bool(sample_topic.get('summary_30w'))}, article={bool(sample_topic.get('article'))}")
         
         return {"content_generated_topics": enriched}
     except Exception as exc:
@@ -287,12 +287,12 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
         
         # Skip topics without essential content - don't publish empty articles
         log.info(f"🔍 DEBUG: Topic '{topic.get('title', 'unknown')[:30]}' keys: {list(topic.keys())}")
-        log.info(f"🔍 DEBUG: Content fields - summary_30w: {bool(topic.get('summary_30w'))}, article_50w: {bool(topic.get('article_50w'))}")
+        log.info(f"🔍 DEBUG: Content fields - summary_30w: {bool(topic.get('summary_30w'))}, article: {bool(topic.get('article'))}")
         log.info(f"🔍 DEBUG: Content generation flag: content_generated={topic.get('content_generated')}")
         
-        if not topic.get("summary_30w") or not topic.get("article_50w"):
+        if not topic.get("summary_30w") or not topic.get("article"):
             title = topic.get("title", "unknown")[:30]
-            log.warning(f"[publish] skipping topic '{title}' - missing content (summary_30w or article_50w)")
+            log.warning(f"[publish] skipping topic '{title}' - missing content (summary_30w or article)")
             log.warning(f"[publish] Available keys on skipped topic: {list(topic.keys())}")
             continue
 
@@ -368,7 +368,7 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             "viral_score":  topic.get("viral_score"),
             # Content fields — mapped to actual schema columns
             "summary":      topic.get("summary_30w") or "",
-            "article":      topic.get("article_50w") or "",
+            "article":      topic.get("article") or "",
             "script":       topic.get("youtube_script") or "",
             "iab_tags":     iab_tags,
             "social_copy":  social_copy or None,

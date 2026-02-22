@@ -7,7 +7,6 @@
  *
  * Features:
  *  • Category filter tabs
- *  • Viral tier toggle (All / Tier 1 / Tier 2 / Tier 3)
  *  • Responsive 1 → 2 → 3 column grid
  *  • Infinite scroll via IntersectionObserver
  *  • Shimmer skeleton while loading
@@ -24,13 +23,6 @@ import { TopicSkeleton } from './TopicSkeleton';
 
 const PAGE_SIZE = 12;
 
-const TIER_OPTIONS: { label: string; value: 1 | 2 | 3 | null }[] = [
-  { label: 'All Tiers', value: null },
-  { label: '🔥 Tier 1',  value: 1 },
-  { label: '📈 Tier 2',  value: 2 },
-  { label: '🌱 Tier 3',  value: 3 },
-];
-
 interface TopicFeedProps {
   initialTopics:     TrendingTopic[];
   initialCategories: Category[];
@@ -39,20 +31,18 @@ interface TopicFeedProps {
 export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) {
   const router = useRouter();
 
-  const [topics,    setTopics]    = useState<TrendingTopic[]>(initialTopics);
-  const [category,  setCategory]  = useState<string | null>(null);
-  const [tier,      setTier]      = useState<1 | 2 | 3 | null>(null);
-  const [page,      setPage]      = useState(1);
-  const [loading,   setLoading]   = useState(false);
-  const [hasMore,   setHasMore]   = useState(initialTopics.length === PAGE_SIZE);
+  const [topics,   setTopics]   = useState<TrendingTopic[]>(initialTopics);
+  const [category, setCategory] = useState<string | null>(null);
+  const [page,     setPage]     = useState(1);
+  const [loading,  setLoading]  = useState(false);
+  const [hasMore,  setHasMore]  = useState(initialTopics.length === PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // ── Fetch topics from Supabase ─────────────────────────────────────────────
   const fetchTopics = useCallback(async (
-    pageNum:     number,
+    pageNum:      number,
     categorySlug: string | null,
-    viralTier:   1 | 2 | 3 | null,
-    append:      boolean,
+    append:       boolean,
   ) => {
     setLoading(true);
     try {
@@ -65,7 +55,6 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
         .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1);
 
       if (categorySlug) {
-        // Join through categories table
         const { data: cat } = await supabase
           .from('categories')
           .select('id')
@@ -73,10 +62,6 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
           .single();
         const catRow = cat as { id: number } | null;
         if (catRow) query = query.eq('category_id', catRow.id);
-      }
-
-      if (viralTier !== null) {
-        query = query.eq('viral_tier', viralTier);
       }
 
       const { data, error } = await query;
@@ -92,11 +77,11 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
     }
   }, []);
 
-  // ── Re-fetch when filters change ───────────────────────────────────────────
+  // ── Re-fetch when category changes ────────────────────────────────────────
   useEffect(() => {
     setPage(1);
-    fetchTopics(1, category, tier, false);
-  }, [category, tier, fetchTopics]);
+    fetchTopics(1, category, false);
+  }, [category, fetchTopics]);
 
   // ── Infinite scroll sentinel ───────────────────────────────────────────────
   useEffect(() => {
@@ -106,69 +91,25 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
         if (entries[0]?.isIntersecting && hasMore && !loading) {
           const next = page + 1;
           setPage(next);
-          fetchTopics(next, category, tier, true);
+          fetchTopics(next, category, true);
         }
       },
       { rootMargin: '200px' },
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [hasMore, loading, page, category, tier, fetchTopics]);
+  }, [hasMore, loading, page, category, fetchTopics]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* ── Filters ── */}
-      <div
-        style={{
-          display:       'flex',
-          flexDirection: 'column',
-          gap:           'var(--spacing-3)',
-          marginBottom:  'var(--spacing-6)',
-        }}
-      >
+      {/* ── Category filter ── */}
+      <div style={{ marginBottom: 'var(--spacing-6)' }}>
         <CategoryFilter
           categories={initialCategories}
           activeCategory={category}
           onSelect={slug => { setCategory(slug); }}
         />
-
-        {/* Tier filter */}
-        <div
-          style={{
-            display:  'flex',
-            gap:      'var(--spacing-2)',
-            flexWrap: 'wrap',
-          }}
-        >
-          {TIER_OPTIONS.map(opt => {
-            const isActive = tier === opt.value;
-            return (
-              <button
-                key={String(opt.value)}
-                onClick={() => setTier(opt.value)}
-                aria-pressed={isActive}
-                style={{
-                  padding:         'var(--spacing-1) var(--spacing-3)',
-                  borderRadius:    '999px',
-                  border:          isActive
-                    ? '1.5px solid var(--color-secondary)'
-                    : '1.5px solid rgba(0,0,0,.1)',
-                  backgroundColor: isActive ? 'var(--color-secondary)' : 'transparent',
-                  color:           isActive ? '#fff' : 'var(--color-text-secondary-light)',
-                  fontSize:        '12px',
-                  fontWeight:      isActive ? 700 : 500,
-                  fontFamily:      'var(--font-body)',
-                  cursor:          'pointer',
-                  whiteSpace:      'nowrap',
-                  transition:      'all 0.15s',
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* ── Grid ── */}
@@ -197,14 +138,14 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
       {!loading && topics.length === 0 && (
         <div
           style={{
-            textAlign:       'center',
-            padding:         'var(--spacing-16) var(--spacing-4)',
-            color:           'var(--color-text-muted-light)',
-            fontFamily:      'var(--font-body)',
-            fontSize:        '15px',
+            textAlign:  'center',
+            padding:    'var(--spacing-16) var(--spacing-4)',
+            color:      'var(--color-text-muted-light)',
+            fontFamily: 'var(--font-body)',
+            fontSize:   '15px',
           }}
         >
-          No trending topics found for this filter.
+          No trending topics found for this category.
         </div>
       )}
 
@@ -215,11 +156,11 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
       {!hasMore && topics.length > 0 && !loading && (
         <p
           style={{
-            textAlign:   'center',
-            marginTop:   'var(--spacing-8)',
-            fontSize:    '13px',
-            fontFamily:  'var(--font-body)',
-            color:       'var(--color-text-muted-light)',
+            textAlign:  'center',
+            marginTop:  'var(--spacing-8)',
+            fontSize:   '13px',
+            fontFamily: 'var(--font-body)',
+            color:      'var(--color-text-muted-light)',
           }}
         >
           You&apos;ve reached the end of the feed.

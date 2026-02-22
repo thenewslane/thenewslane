@@ -161,11 +161,34 @@ export function TopicCard({ topic, onPress, disabled = false }: TopicCardProps) 
         )}
 
         {/* Footer */}
-        <div style={{ marginTop: 'auto', paddingTop: 'var(--spacing-1)' }}>
+        <div
+          style={{
+            marginTop:      'auto',
+            paddingTop:     'var(--spacing-2)',
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'space-between',
+            gap:            'var(--spacing-2)',
+          }}
+        >
           <SourceAttribution
             sourceName="theNewslane"
             publishedAt={topic.published_at ?? topic.created_at}
           />
+
+          <span
+            aria-hidden
+            style={{
+              fontSize:      '12px',
+              fontWeight:    600,
+              fontFamily:    'var(--font-body)',
+              color:         'var(--color-primary)',
+              whiteSpace:    'nowrap',
+              letterSpacing: '0.01em',
+            }}
+          >
+            Read more →
+          </span>
         </div>
       </div>
     </article>
