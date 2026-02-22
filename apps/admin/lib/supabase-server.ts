@@ -11,17 +11,20 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies }            from 'next/headers';
 
-export function createAuthClient() {
-  const cookieStore = cookies();
+export async function createAuthClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get:    (name: string) => cookieStore.get(name)?.value,
-        set:    () => { /* no-op: server components cannot set cookies */ },
-        remove: () => { /* no-op */ },
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {
+          // Server components cannot set cookies — no-op.
+        },
       },
     },
   );
@@ -29,7 +32,7 @@ export function createAuthClient() {
 
 /** Returns the authenticated user from the JWT cookie, or null. */
 export async function getAuthUser() {
-  const supabase = createAuthClient();
+  const supabase = await createAuthClient();
   const { data: { session } } = await supabase.auth.getSession();
   return session?.user ?? null;
 }
