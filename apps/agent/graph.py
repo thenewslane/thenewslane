@@ -6,7 +6,7 @@ Node sequence:
   generate_content → source_video → generate_media → publish
 
 Conditional edge after predict_viral:
-  If no topics score ≥ 50 → END (logged, pipeline completes gracefully).
+  If no topics score ≥ 10 → END (logged, pipeline completes gracefully).
 
 Error handling:
   Each node wrapper catches all exceptions, appends to `errors` list,
@@ -41,7 +41,7 @@ class AgentState(TypedDict):
 
     # Data accumulated by each stage
     raw_topics: list[Any]                          # list[RawTopic] from collect
-    viral_scored_topics: list[dict[str, Any]]      # topics scoring ≥ 50
+    viral_scored_topics: list[dict[str, Any]]      # topics scoring ≥ 10
     brand_safe_topics: list[dict[str, Any]]        # brand-approved topics
     classified_topics: list[dict[str, Any]]        # topics with category
     content_generated_topics: list[dict[str, Any]] # topics with article content
@@ -274,6 +274,12 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             err = f"publish: topic has no id: {topic.get('title', 'unknown')}"
             log.error(err)
             errors.append(err)
+            continue
+        
+        # Skip topics without essential content - don't publish empty articles
+        if not topic.get("summary_16w") or not topic.get("article_50w"):
+            title = topic.get("title", "unknown")[:30]
+            log.warning(f"[publish] skipping topic '{title}' - missing content (summary_16w or article_50w)")
             continue
 
         # Determine slug: prefer content-generated, fall back to keyword-based
