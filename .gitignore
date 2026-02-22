@@ -8,10 +8,10 @@ apps/web/out/
 apps/admin/.next/
 apps/admin/out/
 
-# Environment files (contain secrets)
+# Environment files (contain secrets — never commit)
+.env
 .env.local
 .env*.local
-# Note: .env is committed intentionally (parsed from RTF template, no raw secrets committed to prod)
 
 # Build outputs
 dist/

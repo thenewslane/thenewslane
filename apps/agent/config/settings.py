@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # ── AI / ML ───────────────────────────────────────────────────────────────
     groq_api_key: str = Field(default="", description="Groq API key (Llama Guard inference)")
     replicate_api_key: str = Field(default="", description="Replicate API key (Flux, Kling video)")
+    openai_api_key: str = Field(default="", description="OpenAI API key for DALL-E image generation")
 
     # ── Media ────────────────────────────────────────────────────────────────
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs TTS key")

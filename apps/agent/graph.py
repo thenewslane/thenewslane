@@ -188,7 +188,7 @@ def _node_generate_content(state: AgentState) -> dict[str, Any]:
         if enriched:
             sample_topic = enriched[0]
             log.info(f"🔍 DEBUG: Sample enriched topic keys: {list(sample_topic.keys())}")
-            log.info(f"🔍 DEBUG: Sample enriched topic content fields: summary_16w={bool(sample_topic.get('summary_16w'))}, article_50w={bool(sample_topic.get('article_50w'))}")
+            log.info(f"🔍 DEBUG: Sample enriched topic content fields: summary_30w={bool(sample_topic.get('summary_30w'))}, article_50w={bool(sample_topic.get('article_50w'))}")
         
         return {"content_generated_topics": enriched}
     except Exception as exc:
@@ -287,12 +287,12 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
         
         # Skip topics without essential content - don't publish empty articles
         log.info(f"🔍 DEBUG: Topic '{topic.get('title', 'unknown')[:30]}' keys: {list(topic.keys())}")
-        log.info(f"🔍 DEBUG: Content fields - summary_16w: {bool(topic.get('summary_16w'))}, article_50w: {bool(topic.get('article_50w'))}")
+        log.info(f"🔍 DEBUG: Content fields - summary_30w: {bool(topic.get('summary_30w'))}, article_50w: {bool(topic.get('article_50w'))}")
         log.info(f"🔍 DEBUG: Content generation flag: content_generated={topic.get('content_generated')}")
         
-        if not topic.get("summary_16w") or not topic.get("article_50w"):
+        if not topic.get("summary_30w") or not topic.get("article_50w"):
             title = topic.get("title", "unknown")[:30]
-            log.warning(f"[publish] skipping topic '{title}' - missing content (summary_16w or article_50w)")
+            log.warning(f"[publish] skipping topic '{title}' - missing content (summary_30w or article_50w)")
             log.warning(f"[publish] Available keys on skipped topic: {list(topic.keys())}")
             continue
 
@@ -335,6 +335,27 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
 
         # Convert iab_categories list → iab_tags TEXT[]
         iab_tags: list[str] = topic.get("iab_categories") or []
+        
+        # Map category name to category_id for database
+        category_id = None
+        category_name = topic.get("category")
+        if category_name:
+            category_mapping = {
+                "Technology": 1,
+                "Entertainment": 2,
+                "Sports": 3,
+                "Politics": 4,
+                "Business & Finance": 5,
+                "Health & Science": 6,
+                "Lifestyle": 7,
+                "World News": 8,
+                "Culture & Arts": 9,
+                "Environment": 10
+            }
+            category_id = category_mapping.get(category_name)
+            if not category_id:
+                log.warning(f"[publish] Unknown category '{category_name}' for topic '{topic.get('title', '')[:30]}', defaulting to World News")
+                category_id = 8  # Default to World News
 
         patch: dict[str, Any] = {
             "status":       "published",
@@ -342,10 +363,11 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             "batch_id":     batch_id,
             "slug":         slug,
             "title":        topic.get("title") or topic.get("keyword", ""),
+            "category_id":  category_id,
             "viral_tier":   topic.get("viral_tier"),
             "viral_score":  topic.get("viral_score"),
             # Content fields — mapped to actual schema columns
-            "summary":      topic.get("summary_16w") or "",
+            "summary":      topic.get("summary_30w") or "",
             "article":      topic.get("article_50w") or "",
             "script":       topic.get("youtube_script") or "",
             "iab_tags":     iab_tags,

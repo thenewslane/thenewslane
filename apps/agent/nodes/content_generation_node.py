@@ -69,7 +69,7 @@ REQUIRED JSON STRUCTURE:
 {{
   "seo_title": "string under 70 characters, factual, no clickbait",
   "meta_description": "string under 160 characters",
-  "summary_16w": "string of exactly 16 words summarizing why this topic is trending",
+  "summary_30w": "string of exactly 30 words summarizing why this topic is trending",
   "article_50w": "string of 50 words, original analysis, factual tone",
   "faq": [
     {{"question": "string", "answer": "string"}},
@@ -117,7 +117,7 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         
         # Required fields check (updated field names)
         required_fields = [
-            "seo_title", "meta_description", "summary_16w", "article_50w",
+            "seo_title", "meta_description", "summary_30w", "article_50w",
             "faq", "facebook_post", "instagram_caption", "twitter_thread",
             "youtube_script", "image_prompt", "iab_categories", "slug"
         ]
@@ -136,10 +136,10 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
             if len(content["meta_description"]) > 160:
                 errors.append(f"meta_description too long: {len(content['meta_description'])} chars (max 160)")
         
-        if "summary_16w" in content:
-            word_count = len(content["summary_16w"].split())
-            if not (14 <= word_count <= 18):  # was 70-90, now 14-18 (target 16)
-                errors.append(f"summary_16w wrong length: {word_count} words (target 16 ±2)")
+        if "summary_30w" in content:
+            word_count = len(content["summary_30w"].split())
+            if not (28 <= word_count <= 32):  # target 30 ±2 words
+                errors.append(f"summary_30w wrong length: {word_count} words (target 30 ±2)")
         
         if "article_50w" in content:
             word_count = len(content["article_50w"].split())
@@ -210,7 +210,7 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                     log.debug(f"ContentGenerator: validation passed for topic '{topic_title}'")
                     final_topic = {**topic, **content, "content_generated": True}
                     log.info(f"🔍 DEBUG: Final topic keys after content generation: {list(final_topic.keys())}")
-                    log.info(f"🔍 DEBUG: Content fields present: summary_16w={bool(final_topic.get('summary_16w'))}, article_50w={bool(final_topic.get('article_50w'))}")
+                    log.info(f"🔍 DEBUG: Content fields present: summary_30w={bool(final_topic.get('summary_30w'))}, article_50w={bool(final_topic.get('article_50w'))}")
                     return final_topic
                 
                 # Retry once with correction prompt
@@ -224,7 +224,7 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                         log.info(f"ContentGenerator: correction successful for topic '{topic_title}'")
                         final_topic = {**topic, **corrected_content, "content_generated": True}
                         log.info(f"🔍 DEBUG: Final topic keys after correction: {list(final_topic.keys())}")
-                        log.info(f"🔍 DEBUG: Content fields present: summary_16w={bool(final_topic.get('summary_16w'))}, article_50w={bool(final_topic.get('article_50w'))}")
+                        log.info(f"🔍 DEBUG: Content fields present: summary_30w={bool(final_topic.get('summary_30w'))}, article_50w={bool(final_topic.get('article_50w'))}")
                         return final_topic
                     else:
                         log.warning(f"ContentGenerator: correction still invalid for '{topic_title}', using best-effort first attempt. Errors: {correction_validation.errors}")
@@ -260,7 +260,7 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         try:
             content = json.loads(result_text)
             log.info(f"🔍 DEBUG: Claude API returned fields: {list(content.keys())}")
-            log.info(f"🔍 DEBUG: Claude content has summary_16w: {bool(content.get('summary_16w'))}, article_50w: {bool(content.get('article_50w'))}")
+            log.info(f"🔍 DEBUG: Claude content has summary_30w: {bool(content.get('summary_30w'))}, article_50w: {bool(content.get('article_50w'))}")
             return content
         except json.JSONDecodeError as e:
             log.error(f"ContentGenerator: JSON parse error: {e}")

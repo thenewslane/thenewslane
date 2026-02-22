@@ -103,9 +103,11 @@ class MediaGenerator:
             raise ValueError("REPLICATE_API_KEY is required for MediaGenerator")
         
         if replicate is None:
-            raise ImportError("replicate package is required for MediaGenerator")
+            log.warning("replicate package unavailable - thumbnails will be skipped due to Python 3.14 compatibility issues")
+            self.replicate_client = None
             
-        self.replicate_client = replicate.Client(api_token=settings.replicate_api_key)
+        if replicate is not None:
+            self.replicate_client = replicate.Client(api_token=settings.replicate_api_key)
         self.storage = StorageManager()
         self.http_client = httpx.AsyncClient(timeout=60.0)
     
@@ -133,7 +135,7 @@ class MediaGenerator:
     
     async def generate_thumbnail(self, topic: Dict[str, Any]) -> Dict[str, str]:
         """
-        Generate thumbnail image using Flux 1.1 Pro.
+        Generate thumbnail image using OpenAI DALL-E 3 (replaces Replicate Flux).
         
         Args:
             topic: Topic dict containing image_prompt
@@ -145,59 +147,73 @@ class MediaGenerator:
         topic_id = topic.get("id", f"topic_{uuid.uuid4().hex[:8]}")
         
         if not image_prompt:
-            raise ValueError("No image_prompt found in topic")
+            log.warning(f"No image_prompt for topic {topic_id} - skipping thumbnail")
+            return {"thumbnail_url": None}
         
-        log.info(f"Generating thumbnail for topic {topic_id}")
+        # Check if OpenAI API key is configured
+        if not getattr(settings, 'openai_api_key', None) or not settings.openai_api_key:
+            log.warning(f"OPENAI_API_KEY not configured - skipping thumbnail for {topic_id}")
+            return {"thumbnail_url": None}
+        
+        log.info(f"Generating thumbnail for topic {topic_id} using OpenAI DALL-E 3")
         
         try:
-            # Call Replicate Flux 1.1 Pro
-            prediction = self.replicate_client.predictions.create(
-                model="black-forest-labs/flux-1.1-pro",
-                input={
-                    "prompt": image_prompt,
-                    "width": THUMBNAIL_WIDTH,
-                    "height": THUMBNAIL_HEIGHT,
-                    "num_outputs": 1,
-                    "output_format": "jpg",
-                    "output_quality": 90
-                }
-            )
+            # Call OpenAI DALL-E 3 API
+            payload = {
+                "model": "dall-e-3",
+                "prompt": image_prompt[:4000],  # DALL-E has 4000 char limit
+                "size": "1792x1024",  # Closest to our 1344x768 requirement
+                "quality": "standard",  # or "hd" for higher quality
+                "n": 1
+            }
             
-            # Poll for completion
-            prediction = await self._poll_prediction(prediction.id)
+            headers = {
+                "Authorization": f"Bearer {settings.openai_api_key}",
+                "Content-Type": "application/json"
+            }
             
-            if prediction.status != "succeeded":
-                raise Exception(f"Thumbnail generation failed: {prediction.status}")
-            
-            # Download generated image
-            image_url = prediction.output[0] if prediction.output else None
-            if not image_url:
-                raise Exception("No image output from Replicate")
-            
-            # Create temporary file
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
-                tmp_path = tmp_file.name
-            
-            await self.download_file(image_url, tmp_path)
-            
-            # Upload to Supabase Storage
-            object_name = f"{topic_id}/thumbnail_{uuid.uuid4().hex[:8]}.jpg"
-            public_url = await self.storage.upload_file(
-                tmp_path, 
-                "thumbnails", 
-                object_name
-            )
-            
-            # Clean up temp file
-            Path(tmp_path).unlink(missing_ok=True)
-            
-            log.info(f"Thumbnail generated for topic {topic_id}: {public_url}")
-            return {"thumbnail_url": public_url}
-            
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/images/generations",
+                    json=payload,
+                    headers=headers
+                )
+                
+                if response.status_code != 200:
+                    raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+                
+                data = response.json()
+                generated_url = data["data"][0]["url"]
+                
+                log.info(f"OpenAI generated image URL: {generated_url}")
+                
+                # Download the generated image
+                img_response = await client.get(generated_url)
+                if img_response.status_code != 200:
+                    raise Exception(f"Failed to download generated image: {img_response.status_code}")
+                
+                # Save to temporary file
+                import tempfile
+                tmp_path = f"/tmp/dall_e_thumbnail_{topic_id}.jpg"
+                with open(tmp_path, "wb") as f:
+                    f.write(img_response.content)
+                
+                # Upload to Supabase Storage
+                public_url = await self.storage.upload_file(tmp_path, "thumbnails", f"{topic_id}.jpg")
+                
+                # Clean up temp file
+                Path(tmp_path).unlink(missing_ok=True)
+                
+                log.info(f"Thumbnail uploaded to Supabase: {public_url}")
+                return {"thumbnail_url": public_url}
+                
         except Exception as e:
-            log.error(f"Thumbnail generation failed for topic {topic_id}: {e}")
-            raise
-    
+            log.error(f"OpenAI thumbnail generation failed for topic {topic_id}: {e}")
+            log.error(f"  Image prompt: {image_prompt[:100]}...")
+            
+            # Return None instead of crashing
+            return {"thumbnail_url": None}
+
     async def generate_ai_video(self, topic: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate AI video using Kling AI model.
@@ -213,6 +229,11 @@ class MediaGenerator:
         
         if not image_prompt:
             raise ValueError("No image_prompt found in topic")
+        
+        # Check if Replicate is available (Python 3.14 compatibility issue)
+        if self.replicate_client is None:
+            log.warning(f"Skipping AI video generation for topic {topic_id} - Replicate unavailable (Python 3.14 compatibility)")
+            return {"video_url": None, "video_url_portrait": None}
         
         log.info(f"Generating AI video for topic {topic_id}")
         
