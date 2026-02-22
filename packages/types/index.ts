@@ -91,7 +91,9 @@ export interface TrendingTopic {
   social_copy:      SocialCopy | null;
   script:           string | null;    // ElevenLabs narration input
   iab_tags:         string[] | null;
-  schema_blocks:    Record<string, unknown>[] | null;
+  // Stored as a single JSON object by the pipeline (keys: faq, seo_title, meta_description,
+  // image_prompt, headline_cluster, embed_url, channel_name, video_id, video_url_portrait)
+  schema_blocks:    Record<string, unknown> | null;
 
   // Media assets
   thumbnail_url:    string | null;    // Flux 1.1 Pro image

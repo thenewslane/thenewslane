@@ -89,34 +89,46 @@ async function getRelatedTopics(topic: TrendingTopic): Promise<TrendingTopic[]> 
 
 // ---------------------------------------------------------------------------
 // Extract FAQ items from schema_blocks
+//
+// schema_blocks is stored as a plain object by the pipeline:
+//   { faq: [{question, answer}, ...], seo_title, image_prompt, ... }
 // ---------------------------------------------------------------------------
-interface FaqSchemaBlock {
-  '@type':          string;
-  mainEntity?:      { '@type': string; name: string; acceptedAnswer: { '@type': string; text: string } }[];
+interface FaqItem {
+  question: string;
+  answer:   string;
 }
 
-function extractFaqItems(schemaBlocks: Record<string, unknown>[] | null) {
+function extractFaqItems(schemaBlocks: Record<string, unknown> | null): FaqItem[] {
   if (!schemaBlocks) return [];
-  const items: { question: string; answer: string }[] = [];
-  for (const block of schemaBlocks) {
-    const typed = block as unknown as FaqSchemaBlock;
-    if (typed['@type'] === 'FAQPage' && Array.isArray(typed.mainEntity)) {
-      for (const entry of typed.mainEntity) {
-        if (entry['@type'] === 'Question' && entry.name && entry.acceptedAnswer?.text) {
-          items.push({ question: entry.name, answer: entry.acceptedAnswer.text });
-        }
+
+  // Pipeline stores FAQ directly under the "faq" key
+  const faq = schemaBlocks['faq'];
+  if (Array.isArray(faq)) {
+    return (faq as unknown[]).reduce<FaqItem[]>((acc, item) => {
+      if (
+        item &&
+        typeof item === 'object' &&
+        'question' in item &&
+        'answer' in item &&
+        typeof (item as FaqItem).question === 'string' &&
+        typeof (item as FaqItem).answer   === 'string'
+      ) {
+        acc.push({ question: (item as FaqItem).question, answer: (item as FaqItem).answer });
       }
-    }
+      return acc;
+    }, []);
   }
-  return items;
+
+  return [];
 }
 
 // ---------------------------------------------------------------------------
-// Extract VideoObject JSON-LD from schema_blocks
+// Extract VideoObject JSON-LD from schema_blocks (currently unused by pipeline)
 // ---------------------------------------------------------------------------
-function extractVideoSchema(schemaBlocks: Record<string, unknown>[] | null): Record<string, unknown> | null {
-  if (!schemaBlocks) return null;
-  return schemaBlocks.find(b => (b as { '@type': string })['@type'] === 'VideoObject') ?? null;
+function extractVideoSchema(_schemaBlocks: Record<string, unknown> | null): Record<string, unknown> | null {
+  // The pipeline does not currently embed VideoObject JSON-LD in schema_blocks.
+  // Video metadata lives in video_url / video_type columns directly.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
