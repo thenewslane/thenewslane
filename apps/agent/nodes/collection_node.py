@@ -67,6 +67,7 @@ class RawTopic:
     keyword: str
     platforms: list[str] = field(default_factory=list)
     twitter_rank: int | None = None
+    reddit_score: int | None = None
     trends_interest: int | None = None
     news_count: int = 0
     # raw DB rows ready for insert_signals(); populated by the collectors
