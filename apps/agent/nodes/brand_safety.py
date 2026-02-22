@@ -1,11 +1,11 @@
 """
-nodes/brand_safety.py — LangGraph node: three-stage brand safety pipeline.
+nodes/brand_safety.py — LangGraph node: two-stage brand safety pipeline.
 
 Stage 1 — Keyword blocklist (config table, instant)
-Stage 2 — Llama Guard 3 via Groq (toxicity / safety classification)
-Stage 3 — Claude Haiku brand suitability score (0–1, threshold from config)
+Stage 2 — DISABLED (Llama Guard had API access issues and over-rejection)
+Stage 3 — Claude Haiku brand suitability assessment (SAFE/UNSAFE)
 
-Topics only advance when overall_passed = True.
+Topics only advance when overall_passed = True (Stage 1 + Stage 3).
 Results are written to brand_safety_log.
 """
 
@@ -23,11 +23,11 @@ log = get_logger(__name__)
 
 
 class BrandSafetyNode:
-    """Orchestrator for three-tier brand safety pipeline."""
+    """Orchestrator for two-tier brand safety pipeline (Tier 2 Llama Guard disabled)."""
     
     def __init__(self) -> None:
         self.keyword_filter = KeywordFilter()
-        self.llama_guard_filter = LlamaGuardFilter()
+        # self.llama_guard_filter = LlamaGuardFilter()  # Disabled - API issues
         self.brand_safety_filter = BrandSafetyLLMFilter()
     
     def process_topic(self, topic: dict[str, Any], batch_id: str) -> tuple[bool, dict[str, Any]]:
@@ -64,22 +64,23 @@ class BrandSafetyNode:
             log_entry["overall_passed"] = False
             return False, log_entry
         
-        # Tier 2: Llama Guard Filter
-        tier2_safe, flagged_categories = self.llama_guard_filter.check(topic_title, headline_cluster)
+        # Tier 2: Llama Guard Filter - DISABLED (API access issues)
+        # Skip Llama Guard check due to API access problems and over-rejection
+        tier2_safe = True  # Always pass Tier 2
+        flagged_categories = []  # No categories flagged
         log_entry["tier2_passed"] = tier2_safe
         log_entry["tier2_flagged_categories"] = flagged_categories
+        log_entry["tier2_skipped"] = True  # Mark as intentionally skipped
         
-        if not tier2_safe:
-            log_entry["overall_passed"] = False
-            return False, log_entry
+        # Note: Tier 2 no longer blocks topics
         
         # Tier 3: Brand Safety LLM Filter
         tier3_safe, explanation = self.brand_safety_filter.check(topic_title, headline_cluster)
         log_entry["tier3_passed"] = tier3_safe
         log_entry["tier3_explanation"] = explanation
         
-        # Overall result
-        overall_safe = tier1_safe and tier2_safe and tier3_safe
+        # Overall result (Tier 2 disabled, so only check Tier 1 + Tier 3)
+        overall_safe = tier1_safe and tier3_safe  # Removed tier2_safe dependency
         log_entry["overall_passed"] = overall_safe
         
         return overall_safe, log_entry

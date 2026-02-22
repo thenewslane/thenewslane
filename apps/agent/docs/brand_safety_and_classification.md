@@ -6,9 +6,9 @@ This document describes the brand safety and classification nodes implemented fo
 
 **Location**: `nodes/brand_safety.py`
 
-The Brand Safety Node implements a three-tier filtering system to ensure content is appropriate for mainstream advertisers.
+The Brand Safety Node implements a two-tier filtering system to ensure content is appropriate for mainstream advertisers.
 
-### Three-Tier Filtering System
+### Two-Tier Filtering System
 
 #### Tier 1: KeywordFilter
 - **Purpose**: Fast keyword-based blocklist filtering
@@ -17,16 +17,15 @@ The Brand Safety Node implements a three-tier filtering system to ensure content
 - **Performance**: Instant (no API calls)
 - **Short-circuits**: Yes - if blocked, stops processing
 
-#### Tier 2: LlamaGuardFilter
-- **Purpose**: AI-powered harm detection across 14 categories
-- **API**: Groq with `llama-guard-3-8b` model
-- **Categories**: Violence, hate speech, sexual content, etc. (14 total)
-- **Performance**: ~1-2 seconds per topic
-- **Short-circuits**: Yes - if flagged, stops processing
+#### Tier 2: LlamaGuardFilter (DISABLED)
+- **Status**: ⚠️ **DISABLED** due to API access issues and over-rejection
+- **Reason**: Llama Guard was rejecting too much valid content
+- **Impact**: Reduced API costs, improved pass-through rate
+- **Note**: Topics skip this tier entirely (always passes)
 
 #### Tier 3: BrandSafetyLLMFilter
 - **Purpose**: Brand advertiser suitability assessment
-- **API**: Anthropic Claude Haiku 3.5
+- **API**: Anthropic Claude Haiku (`claude-3-haiku-20240307`)
 - **Context**: Evaluates if Toyota/P&G would advertise next to content
 - **Performance**: ~1-2 seconds per topic
 - **Response**: SAFE/UNSAFE with explanation
