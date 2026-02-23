@@ -251,6 +251,11 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
     Publish each topic: UPDATE the trending_topics row (created by predict_viral)
     with all generated content/media, set status='published', then trigger ISR
     revalidation and IndexNow.
+
+    Exception handling: each topic is processed one-by-one. Only after the
+    current topic is successfully written to the DB do we trigger site
+    revalidation/IndexNow and then move to the next topic. A failure on one
+    topic never blocks or rolls back prior successful publishes.
     """
     from config.settings import settings  # noqa: PLC0415
     from utils.supabase_client import db  # noqa: PLC0415
@@ -263,7 +268,7 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
     errors: list[str] = []
 
     def _fire_external(slug: str) -> None:
-        """Best-effort ISR revalidation + IndexNow (sync, non-blocking)."""
+        """Best-effort ISR revalidation + IndexNow (sync, non-blocking). Never raises."""
         if not settings.revalidate_secret:
             return
         for url, payload in [
@@ -285,156 +290,170 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             log.info("[publish] human-in-the-loop delay %.0fs before next publish", delay_sec)
             time.sleep(delay_sec)
 
-        topic_id: str | None = topic.get("id") or topic.get("topic_id")
-        if not topic_id:
-            err = f"publish: topic has no id: {topic.get('title', 'unknown')}"
-            log.error(err)
-            errors.append(err)
-            continue
-        
-        # Skip topics without essential content - don't publish empty articles
-        if not topic.get("summary_30w") or not topic.get("article"):
-            title = topic.get("title", "unknown")[:30]
-            log.warning("[publish] skipping topic '%s' - missing content (summary_30w or article)", title)
-            continue
+        try:
+            topic_id: str | None = topic.get("id") or topic.get("topic_id")
+            if not topic_id:
+                err = f"publish: topic has no id: {topic.get('title', 'unknown')}"
+                log.error(err)
+                errors.append(err)
+                continue
 
-        # Determine slug: prefer content-generated, fall back to keyword-based
-        slug: str = (topic.get("slug") or "").strip()
-        if not slug:
-            kw = str(topic.get("keyword") or topic.get("title") or "")
-            slug = re.sub(r"[^a-z0-9\s-]", "", kw.lower())
-            slug = re.sub(r"\s+", "-", slug.strip())[:80].strip("-")
+            # Skip topics without essential content - don't publish empty articles
+            if not topic.get("summary_30w") or not topic.get("article"):
+                title = topic.get("title", "unknown")[:30]
+                log.warning("[publish] skipping topic '%s' - missing content (summary_30w or article)", title)
+                continue
 
-        now_iso = datetime.now(timezone.utc).isoformat()
+            # Determine slug: prefer content-generated, fall back to keyword-based
+            slug: str = (topic.get("slug") or "").strip()
+            if not slug:
+                kw = str(topic.get("keyword") or topic.get("title") or "")
+                slug = re.sub(r"[^a-z0-9\s-]", "", kw.lower())
+                slug = re.sub(r"\s+", "-", slug.strip())[:80].strip("-")
 
-        # Map video_type to the DB CHECK constraint values
-        _vtype_map = {
-            "youtube": "youtube_embed",
-            "vimeo":   "vimeo_embed",
-            "ai_needed": "kling_generated",
-        }
-        raw_vtype = topic.get("video_type", "none")
-        db_video_type: str | None = _vtype_map.get(raw_vtype)  # None for "none"/unknown
+            now_iso = datetime.now(timezone.utc).isoformat()
 
-        # Bundle social content into social_copy JSONB column
-        social_copy: dict[str, Any] = {}
-        if topic.get("facebook_post"):
-            social_copy["facebook"] = topic["facebook_post"]
-        if topic.get("instagram_caption"):
-            social_copy["instagram"] = topic["instagram_caption"]
-        if topic.get("twitter_thread"):
-            social_copy["twitter"] = topic["twitter_thread"]
-        if topic.get("youtube_script"):
-            social_copy["youtube"] = topic["youtube_script"]
+            # Map video_type to the DB CHECK constraint values
+            _vtype_map = {
+                "youtube": "youtube_embed",
+                "vimeo":   "vimeo_embed",
+                "ai_needed": "kling_generated",
+            }
+            raw_vtype = topic.get("video_type", "none")
+            db_video_type: str | None = _vtype_map.get(raw_vtype)  # None for "none"/unknown
 
-        # Bundle extra metadata into schema_blocks JSONB column
-        schema_blocks: dict[str, Any] = {}
-        for key in ("seo_title", "meta_description", "faq", "headline_cluster",
-                    "embed_url", "channel_name", "video_id", "image_prompt",
-                    "video_url_portrait"):
-            if topic.get(key):
-                schema_blocks[key] = topic[key]
+            # Bundle social content into social_copy JSONB column
+            social_copy: dict[str, Any] = {}
+            if topic.get("facebook_post"):
+                social_copy["facebook"] = topic["facebook_post"]
+            if topic.get("instagram_caption"):
+                social_copy["instagram"] = topic["instagram_caption"]
+            if topic.get("twitter_thread"):
+                social_copy["twitter"] = topic["twitter_thread"]
+            if topic.get("youtube_script"):
+                social_copy["youtube"] = topic["youtube_script"]
+
+            # Bundle extra metadata into schema_blocks JSONB column
+            schema_blocks: dict[str, Any] = {}
+            for key in ("seo_title", "meta_description", "faq", "headline_cluster",
+                        "embed_url", "channel_name", "video_id", "image_prompt",
+                        "video_url_portrait"):
+                if topic.get(key):
+                    schema_blocks[key] = topic[key]
         # One external source per article (for rel=nofollow attribution)
         source_id = topic.get("source_id") or ""
         if isinstance(source_id, str) and source_id.startswith("http"):
             schema_blocks["source_url"] = source_id
             if topic.get("source"):
                 schema_blocks["source_name"] = topic["source"]
+        # Persist brand_safe so the article page can disable ad slots for UNSAFE content
+        schema_blocks["brand_safe"] = topic.get("brand_safe", True)
 
         # Convert iab_categories list → iab_tags TEXT[]
-        iab_tags: list[str] = topic.get("iab_categories") or []
-        
-        # Map category name to category_id for database
-        category_id = None
-        category_name = topic.get("category")
-        if category_name:
-            category_mapping = {
-                "Technology": 1,
-                "Entertainment": 2,
-                "Sports": 3,
-                "Politics": 4,
-                "Business & Finance": 5,
-                "Health & Science": 6,
-                "Lifestyle": 7,
-                "World News": 8,
-                "Culture & Arts": 9,
-                "Environment": 10
+            iab_tags: list[str] = topic.get("iab_categories") or []
+
+            # Map category name to category_id for database
+            category_id = None
+            category_name = topic.get("category")
+            if category_name:
+                category_mapping = {
+                    "Technology": 1,
+                    "Entertainment": 2,
+                    "Sports": 3,
+                    "Politics": 4,
+                    "Business & Finance": 5,
+                    "Health & Science": 6,
+                    "Lifestyle": 7,
+                    "World News": 8,
+                    "Culture & Arts": 9,
+                    "Environment": 10
+                }
+                category_id = category_mapping.get(category_name)
+                if not category_id:
+                    log.warning("[publish] Unknown category '%s' for topic '%s', defaulting to World News",
+                                category_name, (topic.get("title") or "")[:30])
+                    category_id = 8  # Default to World News
+
+            patch: dict[str, Any] = {
+                "status":       "published",
+                "published_at": now_iso,
+                "batch_id":     batch_id,
+                "slug":         slug,
+                "title":        topic.get("title") or topic.get("keyword", ""),
+                "category_id":  category_id,
+                "viral_tier":   topic.get("viral_tier"),
+                "viral_score":  topic.get("viral_score"),
+                "summary":      topic.get("summary_30w") or "",
+                "article":      topic.get("article") or "",
+                "script":       topic.get("youtube_script") or "",
+                "iab_tags":     iab_tags,
+                "social_copy":  social_copy or None,
+                "schema_blocks": schema_blocks or None,
+                "thumbnail_url":       topic.get("thumbnail_url"),
+                "video_url":           topic.get("video_url"),
+                "instagram_video_url": topic.get("instagram_video_url"),
+                "video_type":          db_video_type,
             }
-            category_id = category_mapping.get(category_name)
-            if not category_id:
-                log.warning(f"[publish] Unknown category '{category_name}' for topic '{topic.get('title', '')[:30]}', defaulting to World News")
-                category_id = 8  # Default to World News
+            patch = {k: v for k, v in patch.items() if v is not None}
 
-        patch: dict[str, Any] = {
-            "status":       "published",
-            "published_at": now_iso,
-            "batch_id":     batch_id,
-            "slug":         slug,
-            "title":        topic.get("title") or topic.get("keyword", ""),
-            "category_id":  category_id,
-            "viral_tier":   topic.get("viral_tier"),
-            "viral_score":  topic.get("viral_score"),
-            # Content fields — mapped to actual schema columns
-            "summary":      topic.get("summary_30w") or "",
-            "article":      topic.get("article") or "",
-            "script":       topic.get("youtube_script") or "",
-            "iab_tags":     iab_tags,
-            "social_copy":  social_copy or None,
-            "schema_blocks": schema_blocks or None,
-            # Media fields
-            "thumbnail_url":       topic.get("thumbnail_url"),
-            "video_url":           topic.get("video_url"),
-            "instagram_video_url": topic.get("instagram_video_url"),
-            "video_type":          db_video_type,
-        }
-        # Strip None values so we don't overwrite nullable DB columns with null
-        patch = {k: v for k, v in patch.items() if v is not None}
+            # If an article with this slug was published within the last 48h, update it instead of the new row
+            update_id: str | None = None
+            try:
+                cutoff = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+                existing = (
+                    db.client.table("trending_topics")
+                    .select("id")
+                    .eq("slug", slug)
+                    .eq("status", "published")
+                    .gte("published_at", cutoff)
+                    .limit(1)
+                    .execute()
+                )
+                if existing.data and len(existing.data) > 0:
+                    existing_id = existing.data[0].get("id")
+                    if existing_id and str(existing_id) != str(topic_id):
+                        update_id = str(existing_id)
+            except Exception as exc:
+                log.debug("[publish] existing-article check failed for slug=%s: %s", slug, exc)
 
-        # If an article with this slug was published within the last 48h, update it instead of the new row
-        update_id: str | None = None
-        try:
-            cutoff = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
-            existing = (
-                db.client.table("trending_topics")
-                .select("id")
-                .eq("slug", slug)
-                .eq("status", "published")
-                .gte("published_at", cutoff)
-                .limit(1)
-                .execute()
-            )
-            if existing.data and len(existing.data) > 0:
-                existing_id = existing.data[0].get("id")
-                if existing_id and str(existing_id) != str(topic_id):
-                    update_id = str(existing_id)
+            # Step 1: Write to DB only. Do not fire external or advance state until this succeeds.
+            db_success = False
+            published_id: str | None = None
+            if update_id:
+                patch_existing = {k: v for k, v in patch.items() if k != "published_at"}
+                patch_existing["updated_at"] = now_iso
+                patch_existing = {k: v for k, v in patch_existing.items() if v is not None}
+                try:
+                    db.client.table("trending_topics").update(patch_existing).eq("id", update_id).execute()
+                    db_success = True
+                    published_id = update_id
+                    log.info("[publish] updated existing article  id=%s  slug=%s  (new content)", update_id, slug)
+                except Exception as exc:
+                    err = f"publish: failed to update existing {update_id}: {exc}"
+                    log.error(err)
+                    errors.append(err)
+            else:
+                try:
+                    db.client.table("trending_topics").update(patch).eq("id", topic_id).execute()
+                    db_success = True
+                    published_id = topic_id
+                    log.info("[publish] published %s  id=%s  slug=%s",
+                             topic.get("title", "?"), topic_id, slug)
+                except Exception as exc:
+                    err = f"publish: failed for {topic_id}: {exc}"
+                    log.error(err)
+                    errors.append(err)
+
+            # Step 2: Only after successful DB write, update site (ISR/IndexNow) and record success.
+            if db_success and published_id:
+                published_ids.append(published_id)
+                _fire_external(slug)
+
         except Exception as exc:
-            log.debug("[publish] existing-article check failed for slug=%s: %s", slug, exc)
-
-        if update_id:
-            # Update existing article: set updated_at, do not change published_at
-            patch_existing = {k: v for k, v in patch.items() if k != "published_at"}
-            patch_existing["updated_at"] = now_iso
-            patch_existing = {k: v for k, v in patch_existing.items() if v is not None}
-            try:
-                db.client.table("trending_topics").update(patch_existing).eq("id", update_id).execute()
-                published_ids.append(update_id)
-                log.info("[publish] updated existing article  id=%s  slug=%s  (new content)", update_id, slug)
-                _fire_external(slug)
-            except Exception as exc:
-                err = f"publish: failed to update existing {update_id}: {exc}"
-                log.error(err)
-                errors.append(err)
-        else:
-            try:
-                db.client.table("trending_topics").update(patch).eq("id", topic_id).execute()
-                published_ids.append(topic_id)
-                log.info("[publish] published %s  id=%s  slug=%s",
-                         topic.get("title", "?"), topic_id, slug)
-                _fire_external(slug)
-            except Exception as exc:
-                err = f"publish: failed for {topic_id}: {exc}"
-                log.error(err)
-                errors.append(err)
+            err = f"publish: unexpected error for topic {topic.get('id') or topic.get('title', '?')}: {exc}"
+            log.error(err)
+            log.debug(traceback.format_exc())
+            errors.append(err)
 
     log.info("[publish] done  published=%d  errors=%d", len(published_ids), len(errors))
     result: dict[str, Any] = {"published_topic_ids": published_ids}

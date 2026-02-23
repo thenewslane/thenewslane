@@ -5,7 +5,8 @@ Stage 1 — Keyword blocklist (config table, instant)
 Stage 2 — DISABLED (Llama Guard had API access issues and over-rejection)
 Stage 3 — Claude Haiku brand suitability assessment (SAFE/UNSAFE)
 
-Topics only advance when overall_passed = True (Stage 1 + Stage 3).
+All topics are ingested and advance; each topic gets brand_safe=True/False.
+Unsafe topics are still published but ad slots are disabled on the article page.
 Results are written to brand_safety_log.
 """
 
@@ -90,32 +91,30 @@ def check_brand_safety(state: dict[str, Any]) -> dict[str, Any]:
     """
     LangGraph node — run three-stage brand safety checks on every candidate topic.
 
+    All topics are ingested; each topic gains 'brand_safe': True or False.
+    Unsafe topics continue through the pipeline but ad slots are disabled on the article page.
+
     Updates state keys:
-      topics          — each dict gains 'brand_safe': bool
-      topics_rejected — incremented for each failed topic
+      topics          — all topics, each with 'brand_safe': bool
+      topics_rejected — count of topics flagged UNSAFE (for metrics only)
     """
     batch_id: str = state["batch_id"]
     topics: list[dict[str, Any]] = state.get("topics", [])
     log.info("check_brand_safety: checking %d topics  batch_id=%s", len(topics), batch_id)
 
-    # Initialize brand safety processor
     brand_safety_node = BrandSafetyNode()
-    
-    approved: list[dict[str, Any]] = []
+    all_topics: list[dict[str, Any]] = []
     rejected_count: int = 0
     log_entries: list[dict[str, Any]] = []
 
     for topic in topics:
         is_safe, log_entry = brand_safety_node.process_topic(topic, batch_id)
         log_entries.append(log_entry)
-        
-        if is_safe:
-            topic['brand_safe'] = True
-            approved.append(topic)
-        else:
+        topic["brand_safe"] = is_safe
+        all_topics.append(topic)
+        if not is_safe:
             rejected_count += 1
-    
-    # Bulk insert log entries
+
     try:
         if log_entries:
             db.client.table("brand_safety_log").insert(log_entries).execute()
@@ -124,10 +123,10 @@ def check_brand_safety(state: dict[str, Any]) -> dict[str, Any]:
         log.error("check_brand_safety: failed to insert log entries: %s", e)
 
     log.info(
-        "check_brand_safety: %d approved, %d rejected",
-        len(approved), rejected_count,
+        "check_brand_safety: %d approved, %d rejected (all ingested)",
+        len(all_topics) - rejected_count, rejected_count,
     )
     return {
-        "topics":         approved,
+        "topics":         all_topics,
         "topics_rejected": state.get("topics_rejected", 0) + rejected_count,
     }

@@ -72,22 +72,49 @@ async function getTopic(slug: string): Promise<TrendingTopic | null> {
   return data as TrendingTopic;
 }
 
+const RELATED_COUNT = 5;
+
 async function getRelatedTopics(topic: TrendingTopic): Promise<TrendingTopic[]> {
   const supabase = getServerClient();
+  const excludeId = topic.id;
+
+  // 1) Prefer same category, up to RELATED_COUNT
   let query = supabase
     .from('trending_topics')
     .select('*, category:categories(id, name, slug, color, description)')
     .eq('status', 'published')
-    .neq('id', topic.id)
+    .neq('id', excludeId)
     .order('published_at', { ascending: false })
-    .limit(3);
+    .limit(RELATED_COUNT);
 
   if (topic.category_id) {
     query = query.eq('category_id', topic.category_id);
   }
 
-  const { data } = await query;
-  return (data ?? []) as TrendingTopic[];
+  const { data: sameCategory } = await query;
+  const related = (sameCategory ?? []) as TrendingTopic[];
+
+  // 2) If fewer than RELATED_COUNT, fill with most recent (any category)
+  if (related.length < RELATED_COUNT) {
+    const haveIds = new Set(related.map((r) => r.id));
+    haveIds.add(excludeId);
+    const need = RELATED_COUNT - related.length;
+    const { data: recent } = await supabase
+      .from('trending_topics')
+      .select('*, category:categories(id, name, slug, color, description)')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .limit(need + 10);
+    const recentList = (recent ?? []) as TrendingTopic[];
+    for (const t of recentList) {
+      if (haveIds.has(t.id)) continue;
+      related.push(t);
+      haveIds.add(t.id);
+      if (related.length >= RELATED_COUNT) break;
+    }
+  }
+
+  return related;
 }
 
 // ---------------------------------------------------------------------------
@@ -233,6 +260,7 @@ export default async function ArticlePage({
 
   const publishedAt  = topic.published_at ?? topic.created_at;
   const articleUrl   = `${baseUrl}/trending/${topic.slug}`;
+  const allowAds     = (topic.schema_blocks as Record<string, unknown> | null)?.brand_safe !== false;
 
   // Body paragraphs (split on double newline, fallback to full article)
   const paragraphs = topic.article
@@ -425,8 +453,8 @@ export default async function ArticlePage({
                   </div>
                 )}
 
-                {/* In-content ad after 3rd paragraph (all devices) */}
-                {idx === 2 && (
+                {/* In-content ad after 3rd paragraph (disabled for UNSAFE / brand-unsafe content) */}
+                {idx === 2 && allowAds && (
                   <div style={{ margin: 'var(--spacing-6) 0', display: 'flex', justifyContent: 'center' }}>
                     <AdSlot
                       unitPath={AD_UNITS.IN_CONTENT.unitPath}
@@ -471,28 +499,30 @@ export default async function ArticlePage({
         </div>
       </article>
 
-      {/* ── Mobile anchor ad — fixed bottom, mobile only ── */}
-      <div
-        style={{
-          position:   'fixed',
-          bottom:     0,
-          left:       0,
-          right:      0,
-          zIndex:     50,
-          display:    'flex',
-          justifyContent: 'center',
-          pointerEvents: 'none',
-        }}
-        className="mobile-anchor-ad"
-      >
-        <div style={{ pointerEvents: 'auto' }}>
-          <AdSlot
-            unitPath={AD_UNITS.MOBILE_ANCHOR.unitPath}
-            sizes={AD_UNITS.MOBILE_ANCHOR.sizes as [number, number][]}
-            id="gam-mobile-anchor"
-          />
+      {/* ── Mobile anchor ad — fixed bottom, mobile only (disabled for UNSAFE content) ── */}
+      {allowAds && (
+        <div
+          style={{
+            position:   'fixed',
+            bottom:     0,
+            left:       0,
+            right:      0,
+            zIndex:     50,
+            display:    'flex',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
+          className="mobile-anchor-ad"
+        >
+          <div style={{ pointerEvents: 'auto' }}>
+            <AdSlot
+              unitPath={AD_UNITS.MOBILE_ANCHOR.unitPath}
+              sizes={AD_UNITS.MOBILE_ANCHOR.sizes as [number, number][]}
+              id="gam-mobile-anchor"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Related Topics ── */}
       {related.length > 0 && (
