@@ -12,7 +12,9 @@ from pathlib import Path
 
 import httpx
 
-from apps.agent.config.settings import get_settings
+# from apps.agent.config.settings import get_settings -- changed by aadi
+from config.settings import get_settings
+
 
 log = logging.getLogger(__name__)
 
