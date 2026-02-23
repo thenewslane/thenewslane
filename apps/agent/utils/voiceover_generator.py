@@ -12,8 +12,7 @@ from pathlib import Path
 
 import httpx
 
-# from apps.agent.config.settings import get_settings -- changed by aadi
-from config.settings import get_settings
+from config.settings import settings
 
 
 log = logging.getLogger(__name__)
@@ -28,7 +27,6 @@ class VoiceoverGenerator:
     """Thin wrapper around the ElevenLabs text-to-speech REST API."""
 
     def __init__(self) -> None:
-        settings = get_settings()
         self.api_key: str = settings.elevenlabs_api_key
         # Allow runtime override through the env var captured by pydantic settings
         self.voice_id: str = settings.elevenlabs_voice_id or _DEFAULT_VOICE_ID
