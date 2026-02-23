@@ -43,9 +43,11 @@ type GoogleSlot = {
   setTargeting: (key: string, value: string | string[]) => GoogleSlot;
 };
 
-declare global {
-  interface Window { googletag?: GoogleTag; }
-}
+/**
+*declare global {
+*  interface Window { googletag?: GoogleTag; }
+*}
+*/
 
 export function AdSlot({ unitPath, sizes, targeting = {}, id }: AdSlotProps) {
   const { consent, isMinor } = useConsent();
