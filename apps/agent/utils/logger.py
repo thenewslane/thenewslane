@@ -98,9 +98,20 @@ _supabase_handler: _SupabaseErrorHandler | None = None
 
 
 def _build_console_handler() -> logging.StreamHandler:  # type: ignore[type-arg]
+    """StreamHandler that flushes after each record so output appears immediately."""
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(StructuredFormatter())
     handler.setLevel(logging.DEBUG)
+
+    # Flush stdout after each log so output is visible when run in pipes/IDE
+    original_emit = handler.emit
+    def _emit_flush(record: logging.LogRecord) -> None:
+        original_emit(record)
+        try:
+            handler.flush()
+        except Exception:
+            pass
+    handler.emit = _emit_flush  # type: ignore[method-assign]
     return handler
 
 

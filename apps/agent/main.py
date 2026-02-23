@@ -217,8 +217,13 @@ def main() -> None:
         _start_inngest()
         return
 
-    # Direct single run
+    # Direct single run — print immediately so user sees response
     batch_id = os.environ.get("BATCH_ID")
+    print("Starting theNewslane pipeline (single batch)...", flush=True)
+    if batch_id:
+        print(f"  BATCH_ID={batch_id}", flush=True)
+    print("  Log output will stream below. This may take several minutes.\n", flush=True)
+
     try:
         final_state = run_pipeline(batch_id)
 
@@ -226,20 +231,23 @@ def main() -> None:
         errors    = final_state.get("errors", [])
         elapsed   = round(time.time() - final_state.get("run_start_time", time.time()), 1)
 
-        print(f"\n{'═' * 60}")
-        print(f"  theNewslane pipeline — batch complete")
-        print(f"  Published topics : {published}")
-        print(f"  Errors           : {len(errors)}")
-        print(f"  Run time         : {elapsed}s")
+        print(f"\n{'═' * 60}", flush=True)
+        print(f"  theNewslane pipeline — batch complete", flush=True)
+        print(f"  Published topics : {published}", flush=True)
+        print(f"  Errors           : {len(errors)}", flush=True)
+        print(f"  Run time         : {elapsed}s", flush=True)
         if errors:
-            print("  Error details:")
+            print("  Error details:", flush=True)
             for e in errors:
-                print(f"    • {e[:140]}")
-        print(f"{'═' * 60}\n")
+                print(f"    • {e[:140]}", flush=True)
+        print(f"{'═' * 60}\n", flush=True)
 
     except Exception:
         sys.exit(1)
 
 
 if __name__ == "__main__":
+    # Unbuffered stdout so output appears immediately (e.g. in IDE/CI)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
     main()
