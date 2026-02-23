@@ -7,7 +7,7 @@ For each RawTopic from the collection node:
   3. LLMValidator     → adjusted score (only for 8–12 band topics)
   4. Tier assignment  → Tier 1 (16–100) / Tier 2 (13–15) / Tier 3 (10–12)
   5. DB persistence   → trending_topics + viral_predictions rows
-  6. Returns only topics scoring ≥ 10, sorted by score descending.
+  6. Returns only topics scoring ≥ 2 (~2% filter), sorted by score descending.
 """
 
 from __future__ import annotations
@@ -26,11 +26,11 @@ from utils.supabase_client import db
 log = get_logger(__name__)
 
 # ── Tier thresholds (0–100 scale) ─────────────────────────────────────────────
-# Reduced by 80% to be more permissive
+# Set so only ~2% of scored topics are rejected (bottom 2%: score < 2)
 
-TIER_1_MIN: float = 16.0   # was 80.0
-TIER_2_MIN: float = 13.0   # was 65.0  
-TIER_3_MIN: float = 10.0   # was 50.0 → below this → rejected
+TIER_1_MIN: float = 16.0   # Tier 1: 16–100
+TIER_2_MIN: float = 13.0   # Tier 2: 13–15
+TIER_3_MIN: float = 2.0    # Tier 3: 2–12; below 2 → rejected (~2% filter)
 
 
 # ── ViralPredictionNode ───────────────────────────────────────────────────────

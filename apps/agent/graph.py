@@ -6,7 +6,7 @@ Node sequence:
   generate_content → source_video → generate_media → publish
 
 Conditional edge after predict_viral:
-  If no topics score ≥ 10 → END (logged, pipeline completes gracefully).
+  If no topics score ≥ 2 → END (logged, pipeline completes gracefully).
 
 Error handling:
   Each node wrapper catches all exceptions, appends to `errors` list,
@@ -19,7 +19,7 @@ import operator
 import re
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, TypedDict
 
 import httpx
@@ -114,7 +114,7 @@ def _node_predict_viral(state: AgentState) -> dict[str, Any]:
 def _route_after_viral(state: AgentState) -> str:
     """Route to filter_brand_safety or END depending on viral results."""
     if not state.get("viral_scored_topics"):
-        log.info("[predict_viral] no topics scored ≥ 10 — ending batch %s", state["batch_id"])
+        log.info("[predict_viral] no topics scored ≥ 2 — ending batch %s", state["batch_id"])
         return END  # type: ignore[return-value]
     return "filter_brand_safety"
 
@@ -286,14 +286,9 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             continue
         
         # Skip topics without essential content - don't publish empty articles
-        log.info(f"🔍 DEBUG: Topic '{topic.get('title', 'unknown')[:30]}' keys: {list(topic.keys())}")
-        log.info(f"🔍 DEBUG: Content fields - summary_30w: {bool(topic.get('summary_30w'))}, article: {bool(topic.get('article'))}")
-        log.info(f"🔍 DEBUG: Content generation flag: content_generated={topic.get('content_generated')}")
-        
         if not topic.get("summary_30w") or not topic.get("article"):
             title = topic.get("title", "unknown")[:30]
-            log.warning(f"[publish] skipping topic '{title}' - missing content (summary_30w or article)")
-            log.warning(f"[publish] Available keys on skipped topic: {list(topic.keys())}")
+            log.warning("[publish] skipping topic '%s' - missing content (summary_30w or article)", title)
             continue
 
         # Determine slug: prefer content-generated, fall back to keyword-based
@@ -382,16 +377,51 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
         # Strip None values so we don't overwrite nullable DB columns with null
         patch = {k: v for k, v in patch.items() if v is not None}
 
+        # If an article with this slug was published within the last 48h, update it instead of the new row
+        update_id: str | None = None
         try:
-            db.client.table("trending_topics").update(patch).eq("id", topic_id).execute()
-            published_ids.append(topic_id)
-            log.info("[publish] published %s  id=%s  slug=%s",
-                     topic.get("title", "?"), topic_id, slug)
-            _fire_external(slug)
+            cutoff = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+            existing = (
+                db.client.table("trending_topics")
+                .select("id")
+                .eq("slug", slug)
+                .eq("status", "published")
+                .gte("published_at", cutoff)
+                .limit(1)
+                .execute()
+            )
+            if existing.data and len(existing.data) > 0:
+                existing_id = existing.data[0].get("id")
+                if existing_id and str(existing_id) != str(topic_id):
+                    update_id = str(existing_id)
         except Exception as exc:
-            err = f"publish: failed for {topic_id}: {exc}"
-            log.error(err)
-            errors.append(err)
+            log.debug("[publish] existing-article check failed for slug=%s: %s", slug, exc)
+
+        if update_id:
+            # Update existing article: set updated_at, do not change published_at
+            patch_existing = {k: v for k, v in patch.items() if k != "published_at"}
+            patch_existing["updated_at"] = now_iso
+            patch_existing = {k: v for k, v in patch_existing.items() if v is not None}
+            try:
+                db.client.table("trending_topics").update(patch_existing).eq("id", update_id).execute()
+                published_ids.append(update_id)
+                log.info("[publish] updated existing article  id=%s  slug=%s  (new content)", update_id, slug)
+                _fire_external(slug)
+            except Exception as exc:
+                err = f"publish: failed to update existing {update_id}: {exc}"
+                log.error(err)
+                errors.append(err)
+        else:
+            try:
+                db.client.table("trending_topics").update(patch).eq("id", topic_id).execute()
+                published_ids.append(topic_id)
+                log.info("[publish] published %s  id=%s  slug=%s",
+                         topic.get("title", "?"), topic_id, slug)
+                _fire_external(slug)
+            except Exception as exc:
+                err = f"publish: failed for {topic_id}: {exc}"
+                log.error(err)
+                errors.append(err)
 
     log.info("[publish] done  published=%d  errors=%d", len(published_ids), len(errors))
     result: dict[str, Any] = {"published_topic_ids": published_ids}

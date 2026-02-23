@@ -2,5 +2,11 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "cd ../.. && npm install"
+  "installCommand": "cd ../.. && npm install",
+  "crons": [
+    {
+      "path": "/api/cron/run-pipeline",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

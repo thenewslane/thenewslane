@@ -323,6 +323,23 @@ export default async function ArticlePage({
             authorName={authorName}
             publishedAt={publishedAt}
           />
+          {topic.updated_at && publishedAt && topic.updated_at > publishedAt && (
+            <p
+              style={{
+                margin:     'var(--spacing-1) 0 0',
+                fontSize:   '12px',
+                fontFamily: 'var(--font-body)',
+                color:      'var(--color-text-muted-light)',
+              }}
+            >
+              Last updated{' '}
+              <time dateTime={topic.updated_at}>
+                {new Date(topic.updated_at).toLocaleDateString(undefined, {
+                  dateStyle: 'medium',
+                })}
+              </time>
+            </p>
+          )}
         </div>
 
         {/* ── Hero thumbnail — shown at top only when there is no video ── */}

@@ -52,7 +52,7 @@ async function getInitialData(): Promise<{
   try {
     const supabase = getServerClient();
 
-    const [topicsResult, categoriesResult] = await Promise.all([
+    const [topicsResult, categoriesResult, countResult] = await Promise.all([
       supabase
         .from('trending_topics')
         .select('*, category:categories(id, name, slug, color, description)')
@@ -63,11 +63,24 @@ async function getInitialData(): Promise<{
         .from('categories')
         .select('*')
         .order('name', { ascending: true }),
+      // Only show categories that have at least one published topic
+      supabase
+        .from('trending_topics')
+        .select('category_id')
+        .eq('status', 'published')
+        .not('category_id', 'is', null),
     ]);
+
+    const allCategories = (categoriesResult.data ?? []) as Category[];
+    const topicRows = (countResult.data ?? []) as { category_id: number }[];
+    const categoryIdsWithTopics = new Set(
+      topicRows.map((r) => r.category_id).filter((id): id is number => id != null),
+    );
+    const categories = allCategories.filter((c) => categoryIdsWithTopics.has(c.id));
 
     return {
       topics:     (topicsResult.data ?? []) as TrendingTopic[],
-      categories: (categoriesResult.data ?? []) as Category[],
+      categories,
     };
   } catch {
     // Supabase env vars not available at build time.

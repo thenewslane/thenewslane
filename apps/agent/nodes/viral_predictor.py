@@ -5,7 +5,7 @@ Delegates to ViralPredictionNode which applies:
   FeatureEngineer → LinearScorer → LLMValidator (8-12 band) → tier assignment
   → trending_topics + viral_predictions DB rows
 
-Topics scoring < 10 are rejected here and excluded from the returned list.
+Topics scoring < 2 (bottom ~2%) are rejected here and excluded from the returned list.
 """
 
 from __future__ import annotations
