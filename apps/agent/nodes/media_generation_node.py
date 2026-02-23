@@ -38,6 +38,18 @@ MAX_WAIT_TIME   = 300
 
 USER_AGENT = "theNewslane/1.0 (news aggregator; contact@thenewslane.com)"
 
+# Minimum number of topic key terms that must appear in a Wikipedia result title/snippet.
+# Reduces wrong-person/wrong-story thumbnails (e.g. Biden image for a Finland/Sanna Marin story).
+MIN_WIKIPEDIA_RELEVANCE_TERMS = 2
+
+# Stopwords to exclude when deriving key terms from topic title (relevance check).
+_STOPWORDS = frozenset({
+    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for", "of",
+    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+    "do", "does", "did", "will", "would", "could", "should", "may", "might",
+    "about", "with", "by", "from", "as", "into", "through", "during", "after",
+})
+
 
 # ── Supabase Storage helper ────────────────────────────────────────────────────
 
@@ -142,6 +154,24 @@ class MediaGenerator:
             sb = sb[0] if sb else {}
         return sb.get(key, default)
 
+    @staticmethod
+    def _topic_key_terms(topic: Dict[str, Any]) -> set[str]:
+        """
+        Extract significant words from topic title and headline_cluster for
+        thumbnail relevance checks. Used to avoid wrong-person/wrong-story
+        images (e.g. Biden thumbnail for a Finland/Sanna Marin article).
+        """
+        title = (topic.get("title") or "").strip()
+        headlines = (topic.get("headline_cluster") or "").strip()
+        text = f"{title} {headlines}".lower()
+        # Words: letters/numbers only, len >= 2, not stopwords
+        words = set()
+        for word in text.replace("-", " ").split():
+            w = "".join(c for c in word if c.isalnum())
+            if len(w) >= 2 and w not in _STOPWORDS:
+                words.add(w)
+        return words
+
     # ── Thumbnail: step 1 — YouTube ──────────────────────────────────────────
 
     async def _youtube_thumbnail_url(self, topic: Dict[str, Any]) -> Optional[str]:
@@ -168,10 +198,17 @@ class MediaGenerator:
     async def _wikipedia_thumbnail_url(self, topic: Dict[str, Any]) -> Optional[str]:
         """
         Search Wikipedia for the article title and return its page thumbnail URL.
-        Free, no API key, excellent coverage for news topics.
+        Only uses a result if it passes a relevance check: at least
+        MIN_WIKIPEDIA_RELEVANCE_TERMS words from the topic must appear in the
+        page title/snippet to avoid wrong-person or wrong-story images (e.g.
+        Biden thumbnail for a Finland/Sanna Marin article).
         """
         query = (topic.get("title") or "").strip()
         if not query:
+            return None
+
+        key_terms = self._topic_key_terms(topic)
+        if not key_terms:
             return None
 
         try:
@@ -181,7 +218,7 @@ class MediaGenerator:
                     "action": "query",
                     "list": "search",
                     "srsearch": query[:100],
-                    "srlimit": 3,
+                    "srlimit": 10,
                     "format": "json",
                 },
                 headers={"User-Agent": USER_AGENT},
@@ -194,7 +231,29 @@ class MediaGenerator:
             if not results:
                 return None
 
-            page_title = results[0]["title"].replace(" ", "_")
+            # Pick the result that best matches the topic (title + snippet)
+            best_score = -1
+            best_result: Optional[Dict[str, Any]] = None
+            for r in results:
+                title = (r.get("title") or "").lower()
+                snippet = (r.get("snippet") or "").lower()
+                combined = f"{title} {snippet}"
+                score = sum(1 for t in key_terms if t in combined)
+                if score > best_score:
+                    best_score = score
+                    best_result = r
+
+            if (
+                best_result is None
+                or best_score < MIN_WIKIPEDIA_RELEVANCE_TERMS
+            ):
+                log.info(
+                    "Wikipedia relevance check failed for '%s': best score=%d (need >=%d), skipping to avoid wrong image",
+                    query[:40], best_score, MIN_WIKIPEDIA_RELEVANCE_TERMS,
+                )
+                return None
+
+            page_title = best_result["title"].replace(" ", "_")
             resp2 = await self.http_client.get(
                 f"https://en.wikipedia.org/api/rest_v1/page/summary/{page_title}",
                 headers={"User-Agent": USER_AGENT},
@@ -216,7 +275,10 @@ class MediaGenerator:
                     thumb = thumb.replace(small, large)
                     break
 
-            log.info("Wikipedia thumbnail for '%s': %s", query[:40], thumb[:60])
+            log.info(
+                "Wikipedia thumbnail for '%s' (score=%d): %s",
+                query[:40], best_score, thumb[:60],
+            )
             return thumb
 
         except Exception as exc:
@@ -228,11 +290,14 @@ class MediaGenerator:
     async def _wikimedia_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
         """
         Search Wikimedia Commons for a free CC-licensed image.
-        Returns a direct image URL or None.
+        Only returns an image if its filename/title contains at least one topic
+        key term (relevance check to avoid wrong-person/wrong-story images).
         """
         query = (topic.get("title") or "").strip()
         if not query:
             return None
+
+        key_terms = self._topic_key_terms(topic)
 
         try:
             resp = await self.http_client.get(
@@ -265,6 +330,7 @@ class MediaGenerator:
                 width  = int(info.get("width",  0))
                 height = int(info.get("height", 0))
                 url    = info.get("url", "")
+                title  = (page.get("title") or "").lower()
 
                 if mime not in ("image/jpeg", "image/png"):
                     continue
@@ -273,12 +339,15 @@ class MediaGenerator:
                 if height > 0 and width / height < 1.2:  # must be landscape-ish
                     continue
 
+                # Relevance: at least one topic key term in filename/title
+                if key_terms and not any(t in title for t in key_terms):
+                    continue
                 candidates.append({"url": url, "width": width, "height": height})
 
             if not candidates:
                 return None
 
-            # Pick the widest image
+            # Pick the widest image among relevance-filtered candidates
             best = max(candidates, key=lambda c: c["width"])
             log.info("Wikimedia Commons image found: %s", best["url"])
             return best["url"]
