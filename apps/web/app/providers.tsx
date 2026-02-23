@@ -90,7 +90,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         .select('is_minor')
         .eq('id', user.id)
         .single()
-        .then(({ data }) => {
+        .then(({ data }): { data: { is_minor: boolean } | null }) => {
           if (data?.is_minor) {
             setIsMinor(true);
             // Force advertising off for minors (COPPA)
