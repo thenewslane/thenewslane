@@ -105,6 +105,10 @@ const nextConfig = {
       { protocol: 'https', hostname: 'i.vimeocdn.com' },
       { protocol: 'https', hostname: 'vumbnail.com' },
 
+      // Wikimedia / Wikipedia thumbnails (CC-licensed news imagery)
+      { protocol: 'https', hostname: 'upload.wikimedia.org' },
+      { protocol: 'https', hostname: 'commons.wikimedia.org' },
+
       // Google S2 favicon service (used by SourceAttribution component)
       { protocol: 'https', hostname: 'www.google.com' },
     ],

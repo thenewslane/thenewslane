@@ -34,6 +34,8 @@ VIDEO_DURATION  = 5
 POLL_INTERVAL   = 10
 MAX_WAIT_TIME   = 300
 
+USER_AGENT = "theNewslane/1.0 (news aggregator; contact@thenewslane.com)"
+
 
 # ── Supabase Storage helper ────────────────────────────────────────────────────
 
@@ -127,11 +129,23 @@ class MediaGenerator:
     async def __aexit__(self, *_: Any) -> None:
         await self.http_client.aclose()
 
+    # ── Schema-blocks helper ─────────────────────────────────────────────────
+
+    @staticmethod
+    def _sb(topic: Dict[str, Any], key: str, default: Any = None) -> Any:
+        """Safely retrieve a value from topic['schema_blocks'][key]."""
+        sb = topic.get("schema_blocks") or {}
+        if isinstance(sb, list):
+            # Defensive: schema_blocks should be a dict, not a list
+            sb = sb[0] if sb else {}
+        return sb.get(key, default)
+
     # ── Thumbnail: step 1 — YouTube ──────────────────────────────────────────
 
     async def _youtube_thumbnail_url(self, topic: Dict[str, Any]) -> Optional[str]:
         """Return the best available YouTube thumbnail URL for the topic."""
-        video_id = topic.get("video_id")
+        # video_id lives in schema_blocks, not as a top-level field
+        video_id   = topic.get("video_id") or self._sb(topic, "video_id")
         video_type = topic.get("video_type", "")
         if not video_id or "youtube" not in str(video_type):
             return None
@@ -147,7 +161,67 @@ class MediaGenerator:
                 pass
         return None
 
-    # ── Thumbnail: step 2 — Wikimedia Commons ────────────────────────────────
+    # ── Thumbnail: step 2 — Wikipedia page thumbnail ─────────────────────────
+
+    async def _wikipedia_thumbnail_url(self, topic: Dict[str, Any]) -> Optional[str]:
+        """
+        Search Wikipedia for the article title and return its page thumbnail URL.
+        Free, no API key, excellent coverage for news topics.
+        """
+        query = (topic.get("title") or "").strip()
+        if not query:
+            return None
+
+        try:
+            resp = await self.http_client.get(
+                "https://en.wikipedia.org/w/api.php",
+                params={
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": query[:100],
+                    "srlimit": 3,
+                    "format": "json",
+                },
+                headers={"User-Agent": USER_AGENT},
+                timeout=10.0,
+            )
+            if resp.status_code != 200:
+                return None
+
+            results = resp.json().get("query", {}).get("search", [])
+            if not results:
+                return None
+
+            page_title = results[0]["title"].replace(" ", "_")
+            resp2 = await self.http_client.get(
+                f"https://en.wikipedia.org/api/rest_v1/page/summary/{page_title}",
+                headers={"User-Agent": USER_AGENT},
+                timeout=10.0,
+            )
+            if resp2.status_code != 200:
+                return None
+
+            thumb = (resp2.json().get("thumbnail") or {}).get("source")
+            if not thumb:
+                return None
+
+            # Upgrade to a larger resolution
+            for small, large in [
+                ("/200px-", "/1200px-"), ("/320px-", "/1200px-"),
+                ("/400px-", "/1200px-"), ("/640px-", "/1200px-"),
+            ]:
+                if small in thumb:
+                    thumb = thumb.replace(small, large)
+                    break
+
+            log.info("Wikipedia thumbnail for '%s': %s", query[:40], thumb[:60])
+            return thumb
+
+        except Exception as exc:
+            log.debug("Wikipedia search failed for '%s': %s", query, exc)
+            return None
+
+    # ── Thumbnail: step 3 — Wikimedia Commons ────────────────────────────────
 
     async def _wikimedia_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
         """
@@ -171,6 +245,7 @@ class MediaGenerator:
                     "format":    "json",
                     "gsrlimit":  "10",
                 },
+                headers={"User-Agent": USER_AGENT},
                 timeout=10.0,
             )
             if resp.status_code != 200:
@@ -213,7 +288,8 @@ class MediaGenerator:
     # ── Thumbnail: step 3 — DALL-E Ghibli ────────────────────────────────────
 
     def _build_ghibli_prompt(self, topic: Dict[str, Any]) -> str:
-        scene    = (topic.get("image_prompt") or "").strip()
+        # image_prompt is stored inside schema_blocks
+        scene    = (topic.get("image_prompt") or self._sb(topic, "image_prompt") or "").strip()
         title    = (topic.get("title")        or "").strip()
         headlines = (topic.get("headline_cluster") or "").strip()
         category = (topic.get("category")    or "default").strip().lower()
@@ -281,37 +357,32 @@ class MediaGenerator:
 
     async def generate_thumbnail(self, topic: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Resolve thumbnail via 3-step priority:
-          1. YouTube thumbnail (free, instant)
-          2. Wikimedia Commons (free CC image)
-          3. DALL-E 3 Ghibli (AI fallback)
-        Downloads and re-hosts the image in Supabase Storage.
+        Resolve thumbnail via priority chain:
+          1. YouTube thumbnail    — free, instant, relevant (uses schema_blocks['video_id'])
+          2. Wikipedia            — free, no key, good news coverage
+          3. Wikimedia Commons    — free CC image search
+          4. DALL-E 3 Ghibli     — AI fallback (only if billing allows)
+
+        Wikipedia and Wikimedia URLs are stored directly (no Supabase re-host needed).
         """
         topic_id = topic.get("id") or f"topic_{uuid.uuid4().hex[:8]}"
 
-        # Step 1: YouTube thumbnail (no download needed — it's hosted by Google)
+        # 1. YouTube — no quota consumed, URL is stable
         yt_url = await self._youtube_thumbnail_url(topic)
         if yt_url:
-            # Store as-is (YouTube thumbnails are stable)
             return {"thumbnail_url": yt_url}
 
-        # Step 2: Wikimedia Commons
+        # 2. Wikipedia page thumbnail (best for news topics)
+        wp_url = await self._wikipedia_thumbnail_url(topic)
+        if wp_url:
+            return {"thumbnail_url": wp_url}
+
+        # 3. Wikimedia Commons (broader CC image database)
         wm_url = await self._wikimedia_image_url(topic)
         if wm_url:
-            try:
-                img_data = (await self.http_client.get(wm_url, timeout=20.0)).content
-                ext      = ".jpg" if "jpg" in wm_url.lower() or "jpeg" in wm_url.lower() else ".png"
-                tmp      = f"/tmp/wm_{topic_id}{ext}"
-                with open(tmp, "wb") as fh:
-                    fh.write(img_data)
-                public_url = await self.storage.upload_file(tmp, "thumbnails", f"{topic_id}{ext}")
-                Path(tmp).unlink(missing_ok=True)
-                log.info("Wikimedia thumbnail uploaded: %s", public_url)
-                return {"thumbnail_url": public_url}
-            except Exception as exc:
-                log.warning("Wikimedia download/upload failed, falling back to DALL-E: %s", exc)
+            return {"thumbnail_url": wm_url}
 
-        # Step 3: DALL-E 3 Ghibli fallback
+        # 4. DALL-E 3 Ghibli fallback
         dalle_url = await self._dalle_thumbnail(topic, topic_id)
         return {"thumbnail_url": dalle_url}
 
