@@ -40,7 +40,7 @@ type GoogleTag = {
 };
 
 type GoogleSlot = {
-  setTargeting: (key: string, value: string | string[]) => GoogleSlot;
+  setTargeting?: (key: string, value: string | string[]) => GoogleSlot;
 };
 
 /**
