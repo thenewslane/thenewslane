@@ -61,7 +61,7 @@ export function AdSlot({ unitPath, sizes, targeting = {}, id }: AdSlotProps) {
   useEffect(() => {
     if (!gptReady || !adsAllowed) return;
 
-    const gt = window.googletag;
+    const gt = window.googletag as GoogleTag | undefined;
     if (!gt) return;
 
     gt.cmd.push(() => {
@@ -83,9 +83,10 @@ export function AdSlot({ unitPath, sizes, targeting = {}, id }: AdSlotProps) {
     });
 
     return () => {
-      if (slotRef.current && gt) {
-        gt.cmd.push(() => {
-          gt.destroySlots([slotRef.current!]);
+      const g = window.googletag as GoogleTag | undefined;
+      if (slotRef.current && g?.destroySlots) {
+        g.cmd.push(() => {
+          g.destroySlots([slotRef.current!]);
           slotRef.current = null;
         });
       }
