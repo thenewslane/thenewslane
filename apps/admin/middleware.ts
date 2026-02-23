@@ -18,6 +18,22 @@ const PUBLIC_PATHS = ['/login'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ── Require Supabase env (avoids 500 when missing on Vercel) ──────────
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return new NextResponse(
+      [
+        '<!DOCTYPE html><html><head><title>Configuration required</title></head><body style="font-family:sans-serif;max-width:32rem;margin:4rem auto;padding:1rem;">',
+        '<h1>Configuration required</h1>',
+        '<p>Missing <code>NEXT_PUBLIC_SUPABASE_URL</code> or <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in this environment.</p>',
+        '<p>Add them in Vercel: Project → Settings → Environment Variables.</p>',
+        '</body></html>',
+      ].join(''),
+      { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    );
+  }
+
   // ── Allow public paths ────────────────────────────────────────────────
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
     return NextResponse.next();
@@ -29,8 +45,8 @@ export async function middleware(request: NextRequest) {
   });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {

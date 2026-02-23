@@ -11,10 +11,13 @@ import { getServerClient } from '@platform/supabase';
 import type { BatchRun }   from '@platform/types';
 
 // ── Data fetching ──────────────────────────────────────────────────────────
-async function getDashboardStats() {
-  const supabase = getServerClient();
-
-  const [topicsToday, totalUsers, recentRuns, distRows, predRows] = await Promise.all([
+async function getDashboardStats(): Promise<
+  | { ok: true; topicsToday: number; totalUsers: number; recentRuns: BatchRun[]; distRate: number | null; predAccuracy: number | null; distTotal: number; predTotal: number }
+  | { ok: false; error: string }
+> {
+  try {
+    const supabase = getServerClient();
+    const [topicsToday, totalUsers, recentRuns, distRows, predRows] = await Promise.all([
     supabase
       .from('trending_topics')
       .select('id', { count: 'exact', head: true })
@@ -59,15 +62,20 @@ async function getDashboardStats() {
   }).length;
   const predAccuracy = predTotal > 0 ? Math.round((predCorrect / predTotal) * 100) : null;
 
-  return {
-    topicsToday:   topicsToday.count  ?? 0,
-    totalUsers:    totalUsers.count   ?? 0,
-    recentRuns:    (recentRuns.data   ?? []) as BatchRun[],
-    distRate,
-    predAccuracy,
-    distTotal,
-    predTotal,
-  };
+    return {
+      ok: true as const,
+      topicsToday:   topicsToday.count  ?? 0,
+      totalUsers:    totalUsers.count   ?? 0,
+      recentRuns:    (recentRuns.data   ?? []) as BatchRun[],
+      distRate,
+      predAccuracy,
+      distTotal,
+      predTotal,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
@@ -119,6 +127,19 @@ function formatDuration(start: string, end: string | null): string {
 // ── Page ───────────────────────────────────────────────────────────────────
 export default async function DashboardPage() {
   const stats = await getDashboardStats();
+
+  if (!stats.ok) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+          <h2 className="font-semibold text-lg mb-2">Unable to load dashboard</h2>
+          <p className="text-sm mb-2">This usually means the server is missing Supabase configuration.</p>
+          <p className="text-xs font-mono bg-amber-100/80 p-2 rounded mb-3 break-all">{stats.error}</p>
+          <p className="text-sm">In Vercel: Project → Settings → Environment Variables, add <code className="bg-amber-100 px-1 rounded">SUPABASE_URL</code> and <code className="bg-amber-100 px-1 rounded">SUPABASE_SERVICE_KEY</code>.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
