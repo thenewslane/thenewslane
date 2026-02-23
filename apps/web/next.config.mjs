@@ -39,6 +39,7 @@ const securityHeaders = [
         ' https://www.googletagmanager.com' +
         ' https://www.google-analytics.com' +
         ' https://securepubads.g.doubleclick.net' +
+   	' https://static.cloudflareinsights.com' +
         ' https://pagead2.googlesyndication.com',
 
       // Frames: YouTube privacy-enhanced domain, Vimeo, Google ad iframes
@@ -56,7 +57,8 @@ const securityHeaders = [
         (supabaseHostname ? ` https://${supabaseHostname}` : '') +
         ' https://www.google-analytics.com' +
         ' https://analytics.google.com' +
-        ' https://region1.google-analytics.com',
+        ' https://region1.google-analytics.com' +
+	' https://cloudflareinsights.com',
 
       // Styles: Next.js injects inline <style> tags
       "style-src 'self' 'unsafe-inline'",
