@@ -663,6 +663,10 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
 
     topics = list(topic_map.values())
     log.info("collection: %d unique topics after fuzzy merge", len(topics))
+    for i, topic in enumerate(topics, 1):
+        platforms_str = ",".join(topic.platforms) if topic.platforms else "—"
+        log.info("collection: record %d/%d: keyword=%s  platforms=%s  rows=%d",
+                 i, len(topics), topic.keyword, platforms_str, len(topic.raw_rows))
 
     # ── NewsAPI enrichment for topics without news counts ─────────────────
     keywords_to_enrich = [t.keyword for t in topics if t.news_count == 0]

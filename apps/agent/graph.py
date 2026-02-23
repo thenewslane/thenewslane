@@ -64,7 +64,13 @@ def _node_collect(state: AgentState) -> dict[str, Any]:
     try:
         result = collect_signals({"batch_id": state["batch_id"]})
         raw = result.get("raw_signals", [])
-        log.info("[collect] %d raw topics collected", len(raw))
+        total = len(raw)
+        log.info("[collect] %d raw topics collected", total)
+        for i, record in enumerate(raw, 1):
+            keyword = getattr(record, "keyword", str(record)[:50])
+            platforms = getattr(record, "platforms", []) or []
+            platforms_str = ",".join(platforms) if platforms else "—"
+            log.info("[collect] record %d/%d: keyword=%s  platforms=%s", i, total, keyword, platforms_str)
         return {"raw_topics": raw}
     except Exception as exc:
         msg = f"collect: {exc}\n{traceback.format_exc()}"
