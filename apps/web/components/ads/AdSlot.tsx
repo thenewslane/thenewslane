@@ -72,7 +72,9 @@ export function AdSlot({ unitPath, sizes, targeting = {}, id }: AdSlotProps) {
 
         // Apply article-level IAB category targeting for contextual relevance
         Object.entries(targeting).forEach(([k, v]) => {
-          slotRef.current!.setTargeting(k, v);
+
+	slotRef.current?.setTargeting?.(k, v);
+
         });
 
         gt.enableServices();
