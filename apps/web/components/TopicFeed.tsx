@@ -26,19 +26,22 @@ import { FreshContentBanner } from './FreshContentBanner';
 const PAGE_SIZE = 12;
 
 interface TopicFeedProps {
-  initialTopics:     TrendingTopic[];
-  initialCategories: Category[];
+  initialTopics:       TrendingTopic[];
+  initialCategories:   Category[];
+  /** When provided (e.g. on /category/[slug]), pre-select this category and use initialTopics as its first page. */
+  initialCategorySlug?: string | null;
 }
 
-export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) {
+export function TopicFeed({ initialTopics, initialCategories, initialCategorySlug = null }: TopicFeedProps) {
   const router = useRouter();
 
   const [topics,   setTopics]   = useState<TrendingTopic[]>(initialTopics);
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(initialCategorySlug ?? null);
   const [page,     setPage]     = useState(1);
   const [loading,  setLoading]  = useState(false);
   const [hasMore,  setHasMore]  = useState(initialTopics.length === PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const skipInitialFetchRef = useRef(!!initialCategorySlug);
 
   // Track the newest published_at we've seen so the banner knows what's "new"
   const [latestPublishedAt, setLatestPublishedAt] = useState<string | null>(
@@ -89,9 +92,13 @@ export function TopicFeed({ initialTopics, initialCategories }: TopicFeedProps) 
     }
   }, []);
 
-  // ── Re-fetch when category changes ────────────────────────────────────────
+  // ── Re-fetch when category changes (skip first run when initialCategorySlug is set; we already have data) ──
   useEffect(() => {
     setPage(1);
+    if (skipInitialFetchRef.current) {
+      skipInitialFetchRef.current = false;
+      return;
+    }
     fetchTopics(1, category, false);
   }, [category, fetchTopics]);
 
