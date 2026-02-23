@@ -42,7 +42,7 @@ export function SourceAttribution({ sourceName, sourceUrl, publishedAt }: Source
         <a
           href={sourceUrl}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="noopener noreferrer nofollow"
           style={{
             color:          'inherit',
             textDecoration: 'none',

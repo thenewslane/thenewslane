@@ -25,6 +25,7 @@ interface Props {
 
 export function AnalyticsScripts({ consent, isMinor }: Props) {
   const ga4Id = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
   // CCPA opt-out and minor check must be evaluated client-side
   const ccpaOptOut =
@@ -67,6 +68,16 @@ export function AnalyticsScripts({ consent, isMinor }: Props) {
             }}
           />
         </>
+      )}
+
+      {/* ── Google AdSense Auto Ads — when client ID set and user consented ─── */}
+      {consent.advertising && !isMinor && adsenseClientId && (
+        <Script
+          id="adsense-auto"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
+          strategy="afterInteractive"
+          crossOrigin="anonymous"
+        />
       )}
 
       {/* ── Google Ad Manager GPT — always loaded, NPA mode when needed ─── */}

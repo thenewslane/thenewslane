@@ -67,3 +67,47 @@ The front-end expects these exact paths (see `apps/web/config/ad-units.ts`):
 - `/23173092177/mobile_anchor`
 
 Sizes must include the dimensions listed in the table above. Creating the units in GAM (manually or via API) with these paths and sizes ensures the site’s ad requests are accepted and fill correctly.
+
+---
+
+## API access for ad units, orders, and line items
+
+To create **ad units**, **orders**, and **line items** programmatically you need the following.
+
+### OAuth scope
+
+Use this scope for all Ad Manager API calls:
+
+- **`https://www.googleapis.com/auth/dfp`**  
+  Full access to the Ad Manager API (DFP = DoubleClick for Publishers).
+
+The script `apps/web/scripts/create-gam-ad-units.js` uses this scope via `google-auth-library` and `GOOGLE_APPLICATION_CREDENTIALS` (service account JSON).
+
+### Ad units (what the script uses)
+
+- **API:** [Ad Manager API (Beta)](https://developers.google.com/ad-manager/api/beta/reference/rest) REST.
+- **Resource:** `networks/{networkCode}/adUnits` — create/list ad units.
+- **Auth:** Service account or OAuth2 with scope `https://www.googleapis.com/auth/dfp`.
+- **In GAM:** Enable API access for your network (Admin → Global settings → API access) and grant the service account (or user) access to the network.
+
+### Orders and line items
+
+- **Ad Manager API (Beta) REST** focuses on inventory and reporting; it does not expose full Order/LineItem create/update in the same way as the legacy SOAP API.
+- **Orders and line items** are usually created or managed via:
+  1. **Ad Manager SOAP API** — [OrderService](https://developers.google.com/ad-manager/api/reference/latest/OrderService), [LineItemService](https://developers.google.com/ad-manager/api/reference/latest/LineItemService). Use a SOAP client (e.g. in Python or Node) with the same scope `https://www.googleapis.com/auth/dfp`.
+  2. **GAM UI** — Admin → Orders, create order and add line items manually.
+
+To automate orders and line items:
+
+1. Enable **Ad Manager API** in Google Cloud (same as for ad units).
+2. Use the **same OAuth scope**: `https://www.googleapis.com/auth/dfp`.
+3. Call the **SOAP** OrderService and LineItemService (see [Ad Manager API reference](https://developers.google.com/ad-manager/api/reference/latest)); the REST Beta does not yet expose equivalent create endpoints for orders/line items.
+4. Ensure the service account or user has the right **GAM roles** (e.g. can create orders and line items in the chosen network).
+
+### Summary
+
+| Task              | API / method              | Scope                          |
+|-------------------|---------------------------|--------------------------------|
+| Create ad units   | Ad Manager API (Beta) REST | `https://www.googleapis.com/auth/dfp` |
+| Create orders     | Ad Manager SOAP (OrderService) | `https://www.googleapis.com/auth/dfp` |
+| Create line items | Ad Manager SOAP (LineItemService) | `https://www.googleapis.com/auth/dfp` |

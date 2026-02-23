@@ -30,6 +30,7 @@ import { FaqAccordion }       from '@/components/FaqAccordion';
 import { AdSlot }             from '@/components/ads/AdSlot';
 import { NavigableTopicCard } from '@/components/NavigableTopicCard';
 import { AD_UNITS }           from '@/config/ad-units';
+import { discoverImageUrl, DISCOVER_IMAGE_WIDTH, DISCOVER_IMAGE_HEIGHT } from '@/lib/discover-image';
 
 // ---------------------------------------------------------------------------
 // Route segment config
@@ -158,6 +159,9 @@ function buildVideoSchema(
 const pubName   = process.env.PUBLICATION_NAME   ?? 'theNewslane';
 const pubDomain = process.env.PUBLICATION_DOMAIN ?? '';
 const baseUrl   = pubDomain ? `https://${pubDomain}` : 'http://localhost:3000';
+const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? (() => { try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname; } catch { return undefined; } })()
+  : undefined;
 const authorName = process.env.AUTHOR_NAME ?? 'theNewslane Editorial';
 
 export async function generateMetadata(
@@ -168,6 +172,7 @@ export async function generateMetadata(
 
   const url        = `${baseUrl}/trending/${topic.slug}`;
   const imageUrl   = topic.thumbnail_url ?? undefined;
+  const discoverOgImage = discoverImageUrl(imageUrl, supabaseHostname) ?? imageUrl;
   const description = topic.summary ?? `${pubName} — AI-curated trending news.`;
   const publishedAt = topic.published_at ?? topic.created_at;
 
@@ -183,8 +188,8 @@ export async function generateMetadata(
       publishedTime:   publishedAt,
       modifiedTime:    topic.updated_at,
       authors:         [authorName],
-      images:          imageUrl
-        ? [{ url: imageUrl, alt: topic.title, width: 1200, height: 628 }]
+      images:          discoverOgImage
+        ? [{ url: discoverOgImage, alt: topic.title, width: DISCOVER_IMAGE_WIDTH, height: DISCOVER_IMAGE_HEIGHT }]
         : [],
       tags:            topic.iab_tags ?? [],
       siteName:        pubName,
@@ -193,7 +198,7 @@ export async function generateMetadata(
       card:        'summary_large_image',
       title:       topic.title,
       description,
-      images:      imageUrl ? [imageUrl] : [],
+      images:      discoverOgImage ? [discoverOgImage] : [],
     },
   };
 }
@@ -439,7 +444,7 @@ export default async function ArticlePage({
         {/* ── FAQ accordion ── */}
         <FaqAccordion items={faqItems} />
 
-        {/* ── Source attribution ── */}
+        {/* ── Source attribution (1 source per article when available, rel=nofollow) ── */}
         <div
           style={{
             marginTop:   'var(--spacing-8)',
@@ -448,9 +453,20 @@ export default async function ArticlePage({
           }}
         >
           <SourceAttribution
-            sourceName={pubName}
+            sourceName={(() => {
+              const sb = topic.schema_blocks ?? {};
+              const sourceUrl = typeof sb['source_url'] === 'string' ? sb['source_url'] : undefined;
+              const sourceName = typeof sb['source_name'] === 'string' ? sb['source_name'] : undefined;
+              if (sourceUrl && pubDomain && !sourceUrl.startsWith(baseUrl)) return sourceName ?? 'Source';
+              return pubName;
+            })()}
             publishedAt={publishedAt}
-            sourceUrl={articleUrl}
+            sourceUrl={(() => {
+              const sb = topic.schema_blocks ?? {};
+              const sourceUrl = typeof sb['source_url'] === 'string' ? sb['source_url'] : undefined;
+              if (sourceUrl && pubDomain && !sourceUrl.startsWith(baseUrl)) return sourceUrl;
+              return articleUrl;
+            })()}
           />
         </div>
       </article>

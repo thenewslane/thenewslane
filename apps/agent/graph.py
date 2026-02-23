@@ -16,6 +16,7 @@ Error handling:
 from __future__ import annotations
 
 import operator
+import random
 import re
 import time
 import traceback
@@ -277,7 +278,13 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             except Exception as exc:
                 log.warning("[publish] external call failed (%s): %s", url, exc)
 
-    for topic in topics:
+    for i, topic in enumerate(topics):
+        # Simulate human-in-the-loop: stagger publishes to avoid burst pattern (search penalty risk)
+        if i > 0:
+            delay_sec = random.uniform(30, 120)
+            log.info("[publish] human-in-the-loop delay %.0fs before next publish", delay_sec)
+            time.sleep(delay_sec)
+
         topic_id: str | None = topic.get("id") or topic.get("topic_id")
         if not topic_id:
             err = f"publish: topic has no id: {topic.get('title', 'unknown')}"
@@ -327,6 +334,12 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
                     "video_url_portrait"):
             if topic.get(key):
                 schema_blocks[key] = topic[key]
+        # One external source per article (for rel=nofollow attribution)
+        source_id = topic.get("source_id") or ""
+        if isinstance(source_id, str) and source_id.startswith("http"):
+            schema_blocks["source_url"] = source_id
+            if topic.get("source"):
+                schema_blocks["source_name"] = topic["source"]
 
         # Convert iab_categories list → iab_tags TEXT[]
         iab_tags: list[str] = topic.get("iab_categories") or []
