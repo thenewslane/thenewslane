@@ -290,23 +290,27 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
         """Generate content for multiple topics in parallel with concurrency control."""
         if not topics:
             return []
-        
-        log.info(f"ContentGenerator: processing {len(topics)} topics with concurrency limit {CONCURRENCY_LIMIT}")
-        
+
+        total = len(topics)
+        print(f"[content_generation] Generating content for {total} topics (concurrency={CONCURRENCY_LIMIT})...", flush=True)
+        log.info("ContentGenerator: processing %d topics with concurrency limit %d", total, CONCURRENCY_LIMIT)
+
         semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
-        
-        tasks = [
-            self._generate_content_for_topic(topic, semaphore)
-            for topic in topics
-        ]
-        
+
+        async def _task_with_progress(i: int, topic: Dict[str, Any]) -> Dict[str, Any]:
+            title = (topic.get("title") or topic.get("keyword") or "?")[:50]
+            print(f"  [content_generation] {i + 1}/{total}: {title}", flush=True)
+            return await self._generate_content_for_topic(topic, semaphore)
+
+        tasks = [_task_with_progress(i, topic) for i, topic in enumerate(topics)]
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Handle any exceptions that occurred
         processed_results = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                log.error(f"ContentGenerator: task exception for topic {i}: {result}")
+                log.error("ContentGenerator: task exception for topic %d: %s", i, result)
                 original_topic = topics[i]
                 processed_results.append({
                     **original_topic,
@@ -317,41 +321,45 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                 processed_results.append(result)
         
         success_count = sum(1 for r in processed_results if r.get("content_generated", False))
-        log.info(f"ContentGenerator: completed {success_count}/{len(topics)} topics successfully")
-        
+        print(f"[content_generation] Completed: {success_count}/{total} topics generated successfully.", flush=True)
+        log.info("ContentGenerator: completed %d/%d topics successfully", success_count, total)
         return processed_results
 
 
 async def generate_content(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     LangGraph node — generate comprehensive content for approved topics.
-    
+
     Updates state keys:
       topics — each dict gains content fields and generation status
     """
     batch_id: str = state["batch_id"]
     topics: List[Dict[str, Any]] = state.get("topics", [])
-    
-    log.info(f"generate_content: processing {len(topics)} topics  batch_id={batch_id}")
-    
+
+    n = len(topics)
+    print(f"[content_generation] Processing {n} topics (batch_id={batch_id})", flush=True)
+    log.info("generate_content: processing %d topics  batch_id=%s", n, batch_id)
+
     if not topics:
+        print("[content_generation] No topics to process.", flush=True)
         log.info("generate_content: no topics to process")
         return {"topics": topics}
-    
+
     try:
         # Initialize content generator
         generator = ContentGenerator()
-        
+
         # Process topics in parallel
         enriched_topics = await generator.generate_content_batch(topics)
         
         success_count = sum(1 for t in enriched_topics if t.get("content_generated", False))
-        log.info(f"generate_content: successfully generated content for {success_count}/{len(topics)} topics")
+        log.info("generate_content: successfully generated content for %d/%d topics", success_count, n)
         
         return {"topics": enriched_topics}
         
     except Exception as e:
-        log.error(f"generate_content: batch processing failed for batch {batch_id}: {e}")
+        print(f"[content_generation] Batch failed: {e}", flush=True)
+        log.error("generate_content: batch processing failed for batch %s: %s", batch_id, e)
         # Return original topics with error markers
         error_topics = [
             {**topic, "content_generated": False, "generation_errors": [str(e)]}

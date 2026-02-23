@@ -121,6 +121,7 @@ def _node_predict_viral(state: AgentState) -> dict[str, Any]:
 def _route_after_viral(state: AgentState) -> str:
     """Route to filter_brand_safety or END depending on viral results."""
     if not state.get("viral_scored_topics"):
+        print("[predict_viral] No topics passed viral score — pipeline ending (no content generation).", flush=True)
         log.info("[predict_viral] no topics scored ≥ 2 — ending batch %s", state["batch_id"])
         return END  # type: ignore[return-value]
     return "filter_brand_safety"
@@ -181,24 +182,26 @@ def _node_generate_content(state: AgentState) -> dict[str, Any]:
     from nodes.content_generation_node import generate_content_sync  # noqa: PLC0415
 
     topics = state.get("classified_topics", [])
-    log.info("[generate_content] generating for %d topics", len(topics))
-    log.info(f"🔍 DEBUG: Sample topic before content generation: {topics[0].keys() if topics else 'No topics'}")
-    
+    n = len(topics)
+    print(f"[generate_content] Starting content generation for {n} topics (this step may take several minutes)...", flush=True)
+    log.info("[generate_content] generating for %d topics", n)
+    if topics:
+        log.info("Sample topic keys before content generation: %s", list(topics[0].keys()))
+
     try:
         inner = {"batch_id": state["batch_id"], "topics": topics}
         result = generate_content_sync(inner)
         enriched = result.get("topics", [])
         ok = sum(1 for t in enriched if t.get("content_generated"))
+        print(f"[generate_content] Done: {ok}/{n} topics had content generated.", flush=True)
         log.info("[generate_content] %d/%d topics succeeded", ok, len(topics))
-        
-        # Debug: Check what's in the enriched topics
         if enriched:
             sample_topic = enriched[0]
-            log.info(f"🔍 DEBUG: Sample enriched topic keys: {list(sample_topic.keys())}")
-            log.info(f"🔍 DEBUG: Sample enriched topic content fields: summary_30w={bool(sample_topic.get('summary_30w'))}, article={bool(sample_topic.get('article'))}")
-        
+            log.info("Sample enriched topic keys: %s", list(sample_topic.keys()))
+            log.info("Sample content fields: summary_30w=%s, article=%s", bool(sample_topic.get("summary_30w")), bool(sample_topic.get("article")))
         return {"content_generated_topics": enriched}
     except Exception as exc:
+        print(f"[generate_content] Error: {exc}", flush=True)
         msg = f"generate_content: {exc}\n{traceback.format_exc()}"
         log.error(msg)
         return {"content_generated_topics": topics, "errors": [msg]}

@@ -77,6 +77,7 @@ def run_pipeline(batch_id: str | None = None) -> dict:
     }
 
     try:
+        print("Pipeline running: collect → predict_viral → filter → classify → generate_content → source_video → generate_media → publish", flush=True)
         final_state = pipeline.invoke(initial_state)
 
         published = len(final_state.get("published_topic_ids", []))
@@ -84,12 +85,21 @@ def run_pipeline(batch_id: str | None = None) -> dict:
         status    = "partial" if errors else "completed"
         elapsed   = round(time.time() - initial_state["run_start_time"], 1)
 
+        # Make early exit visible (e.g. no viral topics)
+        raw_count = len(final_state.get("raw_topics", []))
+        viral_count = len(final_state.get("viral_scored_topics", []))
+        if raw_count and not viral_count and not published and not errors:
+            print("Pipeline ended early: no topics passed viral scoring (nothing to publish).", flush=True)
+        elif not raw_count:
+            print("Pipeline ended: no signals collected.", flush=True)
+
         log.info(
             "Pipeline completed  status=%s  published=%d  errors=%d  elapsed=%.1fs",
             status, published, len(errors), elapsed,
         )
 
     except Exception as exc:
+        print(f"Pipeline failed: {exc}", flush=True)
         log.error("Pipeline failed with unhandled exception: %s", exc)
         log.error(traceback.format_exc())
         from utils.supabase_client import db as _db  # noqa: PLC0415
