@@ -93,7 +93,24 @@ let _serverClient:  SupabaseClient<Database> | null = null;
  * Safe to call on every render — the instance is reused.
  */
 export function getBrowserClient(): SupabaseClient<Database> {
-  if (!_browserClient) _browserClient = createBrowserClient();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+  
+  if (!url || !key) {
+    console.warn('[supabase] Environment variables not yet available');
+    // Return a dummy client that won't crash the app
+    return createClient<Database>('https://placeholder.supabase.co', 'placeholder') as any;
+  }
+  
+  if (!_browserClient) {
+    _browserClient = createClient<Database>(url, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
+  }
   return _browserClient;
 }
 
