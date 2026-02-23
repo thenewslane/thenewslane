@@ -1,6 +1,6 @@
 # Cron setup — pulling content on a schedule
 
-The pipeline (collect → predict → brand safety → classify → content → video → media → publish) runs in **apps/agent** (Python). To have content pulled automatically every 5 minutes, you need something that **runs the pipeline on a schedule**.
+The pipeline (collect → predict → brand safety → classify → content → video → media → publish) runs in **apps/agent** (Python). To have content pulled automatically (default: once per day), you need something that **runs the pipeline on a schedule**.
 
 ---
 
@@ -15,7 +15,7 @@ export PIPELINE_INTERVAL_MINUTES=5
 python main.py --schedule
 ```
 
-- Runs the first batch immediately, then every 5 minutes (or `PIPELINE_INTERVAL_MINUTES`).
+- Runs the first batch immediately, then every `PIPELINE_INTERVAL_MINUTES` (default: 1440 = once per day).
 - Leave this process running (e.g. on Railway, Render, a VPS, or a systemd service).
 - No Vercel Cron or Inngest required.
 
@@ -40,13 +40,13 @@ If you want Vercel to trigger the pipeline on a schedule:
      "crons": [
        {
          "path": "/api/cron/run-pipeline",
-         "schedule": "*/5 * * * *"
+         "schedule": "0 3 * * *"
        }
      ]
    }
    ```
 
-   Then in Vercel Dashboard → Settings → Environment Variables, add `CRON_SECRET` and (optional) `RUNNER_WEBHOOK_URL`. Vercel will call `GET /api/cron/run-pipeline` every 5 minutes with `Authorization: Bearer <CRON_SECRET>`.
+   Then in Vercel Dashboard → Settings → Environment Variables, add `CRON_SECRET` and (optional) `RUNNER_WEBHOOK_URL`. Vercel will call `GET /api/cron/run-pipeline` on the configured schedule (default: once daily at 03:00 UTC) with `Authorization: Bearer <CRON_SECRET>`.
 
 4. **Implement the agent’s `/run` endpoint** (e.g. in **apps/agent**) so that when it receives a POST from your web app, it runs one pipeline batch. Example (Flask): a route that calls `run_pipeline()` and returns 200. Your `RUNNER_WEBHOOK_URL` should point to this route.
 
@@ -59,7 +59,7 @@ If `RUNNER_WEBHOOK_URL` is not set, the API route still returns 200 so the cron 
 To use Inngest for scheduling:
 
 1. Run the Inngest dev server and connect your app (see [Inngest](https://www.inngest.com)).
-2. Start the agent with Inngest: `python main.py --inngest`. This starts a Flask server that Inngest calls on the configured CRON (e.g. every 5 minutes).
+2. Start the agent with Inngest: `python main.py --inngest`. This starts a Flask server that Inngest calls on the configured CRON (default: once daily).
 3. Ensure the agent is reachable at a public URL and that Inngest is configured to call it.
 
 ---
