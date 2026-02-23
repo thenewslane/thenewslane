@@ -212,6 +212,14 @@ export default async function ArticlePage({
     ? topic.article.split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
     : [];
 
+  // Resolve video data — embed ID lives in schema_blocks for YouTube/Vimeo
+  const sb         = topic.schema_blocks ?? {};
+  const embedId    = typeof sb['video_id'] === 'string' ? sb['video_id'] : undefined;
+  const hasVideo   =
+    (topic.video_type === 'youtube_embed' && !!embedId) ||
+    (topic.video_type === 'vimeo_embed'   && !!embedId) ||
+    (topic.video_type === 'kling_generated' && !!topic.video_url);
+
   // ── JSON-LD: NewsArticle ────────────────────────────────────────────────
   const newsArticleSchema: Record<string, unknown> = {
     '@context':        'https://schema.org',
@@ -294,15 +302,13 @@ export default async function ArticlePage({
           />
         </div>
 
-        {/* ── Video / hero image ── */}
-        {(topic.video_type || topic.thumbnail_url) && (
-          <div style={{ marginBottom: 'var(--spacing-8)', borderRadius: 'var(--radius-large)', overflow: 'hidden' }}>
-            <VideoPlayer
-              videoType={topic.video_type}
-              videoId={topic.video_url ?? undefined}
-              videoUrl={topic.video_type === 'kling_generated' ? (topic.video_url ?? undefined) : undefined}
-              thumbnailUrl={topic.thumbnail_url ?? undefined}
-              title={topic.title}
+        {/* ── Hero thumbnail — shown at top only when there is no video ── */}
+        {!hasVideo && topic.thumbnail_url && (
+          <div style={{ marginBottom: 'var(--spacing-6)', borderRadius: 'var(--radius-large)', overflow: 'hidden' }}>
+            <img
+              src={topic.thumbnail_url}
+              alt={topic.title}
+              style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: 480 }}
             />
           </div>
         )}
@@ -325,42 +331,55 @@ export default async function ArticlePage({
           </p>
         )}
 
-        {/* ── Article body ── */}
+        {/* ── Article body — video injected after paragraph 1 ── */}
         {paragraphs.length > 0 && (
           <div style={{ marginBottom: 'var(--spacing-6)' }}>
             {paragraphs.map((para, idx) => (
               <React.Fragment key={idx}>
-                {/* Insert an ad after the 3rd paragraph */}
-                {idx === 3 && (
+                <p
+                  style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize:   '16px',
+                    lineHeight: 1.8,
+                    color:      'var(--color-text-primary-light)',
+                    margin:     '0 0 var(--spacing-4)',
+                  }}
+                >
+                  {para}
+                </p>
+
+                {/* Video player embedded after the 1st paragraph */}
+                {idx === 0 && hasVideo && (
+                  <div style={{ margin: 'var(--spacing-6) 0', borderRadius: 'var(--radius-large)', overflow: 'hidden' }}>
+                    <VideoPlayer
+                      videoType={topic.video_type}
+                      videoId={
+                        (topic.video_type === 'youtube_embed' || topic.video_type === 'vimeo_embed')
+                          ? embedId
+                          : undefined
+                      }
+                      videoUrl={
+                        topic.video_type === 'kling_generated'
+                          ? (topic.video_url ?? undefined)
+                          : undefined
+                      }
+                      thumbnailUrl={topic.thumbnail_url ?? undefined}
+                      title={topic.title}
+                    />
+                  </div>
+                )}
+
+                {/* Ad after 3rd paragraph */}
+                {idx === 2 && (
                   <ArticleAdSlot
                     unitPath="/theNewslane/article-mid"
                     sizes={[[728, 90], [320, 50]]}
                     id="ad-article-mid"
                   />
                 )}
-                <p
-                  style={{
-                    fontFamily:   'var(--font-body)',
-                    fontSize:     '16px',
-                    lineHeight:   1.8,
-                    color:        'var(--color-text-primary-light)',
-                    margin:       '0 0 var(--spacing-4)',
-                  }}
-                >
-                  {para}
-                </p>
               </React.Fragment>
             ))}
           </div>
-        )}
-
-        {/* ── Ad slot (if article is short, still show the ad) ── */}
-        {paragraphs.length <= 3 && (
-          <ArticleAdSlot
-            unitPath="/theNewslane/article-mid"
-            sizes={[[728, 90], [320, 50]]}
-            id="ad-article-mid"
-          />
         )}
 
         {/* ── FAQ accordion ── */}

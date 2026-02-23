@@ -18,15 +18,27 @@ import { TopicFeed } from '@/components/TopicFeed';
 // ---------------------------------------------------------------------------
 // Metadata
 // ---------------------------------------------------------------------------
-const pubName = process.env.PUBLICATION_NAME ?? 'theNewslane';
+const pubName   = process.env.PUBLICATION_NAME   ?? 'theNewslane';
+const pubDomain = process.env.PUBLICATION_DOMAIN ?? '';
+const baseUrl   = pubDomain ? `https://${pubDomain}` : 'https://thenewslane.com';
+
+const _desc = `Today's most viral stories, AI-curated in real time. Breaking news across technology, politics, sports, entertainment, and more.`;
 
 export const metadata: Metadata = {
   title:       `Trending Now | ${pubName}`,
-  description: `Today's most viral stories, AI-curated in real time. Breaking news across technology, politics, sports, entertainment, and more.`,
+  description: _desc,
+  alternates:  { canonical: baseUrl },
   openGraph: {
     title:       `Trending Now | ${pubName}`,
-    description: `Today's most viral stories, AI-curated in real time.`,
+    description: _desc,
+    url:         baseUrl,
     type:        'website',
+    siteName:    pubName,
+  },
+  twitter: {
+    card:        'summary_large_image',
+    title:       `Trending Now | ${pubName}`,
+    description: _desc,
   },
 };
 
