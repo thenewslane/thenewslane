@@ -31,6 +31,10 @@ import type { Database } from '@platform/types';
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
+    if (typeof window === 'undefined') {
+      // Server-side during build — return empty string gracefully
+      return '';
+    }		
     throw new Error(
       `[supabase] Missing required environment variable: ${name}. ` +
       `Check your .env file and ensure it is loaded before importing this module.`
