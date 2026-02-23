@@ -3,8 +3,8 @@
 # See: https://support.google.com/adsense/answer/12171612
 #      https://support.google.com/admanager/answer/7441288
 
-# Google AdSense (use your pub-XXXXXXXXXXXXXXXX from AdSense → Account → Settings)
-google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
+# Google AdSense (pub-2372260960415453)
+google.com, pub-2372260960415453, DIRECT, f08c47fec0942fa0
 
 # Google Ad Manager (network code 23173092177; get certification ID from GAM Admin → Global settings → ads.txt)
 google.com, 23173092177, DIRECT, f08c47fec0942fa0

@@ -19,7 +19,7 @@
  *   NEXT_PUBLIC_SUPABASE_ANON_KEY
  *   NEXT_PUBLIC_GA4_MEASUREMENT_ID
  *   NEXT_PUBLIC_PUBLICATION_NAME  — client-accessible copy of PUBLICATION_NAME
- *   NEXT_PUBLIC_ADSENSE_CLIENT_ID — optional; enables AdSense auto ads (e.g. ca-pub-XXXXXXXXXXXXXXXX)
+ *   NEXT_PUBLIC_ADSENSE_CLIENT_ID — optional; enables AdSense auto ads (e.g. ca-pub-2372260960415453)
  */
 
 import type { Metadata, Viewport } from 'next';
