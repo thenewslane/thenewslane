@@ -374,9 +374,10 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             "social_copy":  social_copy or None,
             "schema_blocks": schema_blocks or None,
             # Media fields
-            "thumbnail_url": topic.get("thumbnail_url"),
-            "video_url":     topic.get("video_url"),
-            "video_type":    db_video_type,
+            "thumbnail_url":       topic.get("thumbnail_url"),
+            "video_url":           topic.get("video_url"),
+            "instagram_video_url": topic.get("instagram_video_url"),
+            "video_type":          db_video_type,
         }
         # Strip None values so we don't overwrite nullable DB columns with null
         patch = {k: v for k, v in patch.items() if v is not None}

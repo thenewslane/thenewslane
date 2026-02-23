@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     # ── Media ────────────────────────────────────────────────────────────────
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs TTS key")
+    elevenlabs_voice_id: str = Field(default="pNInz6obpgDQGcFmaJgB", description="ElevenLabs voice ID (default: Adam, neutral male news voice)")
 
     # ── Distribution ─────────────────────────────────────────────────────────
     onesignal_app_id: str = Field(default="", description="OneSignal App ID")

@@ -3,12 +3,16 @@
 /**
  * AnalyticsScripts
  *
- * Loads third-party scripts ONLY after the user grants the relevant consent
- * category via the ConsentBanner. Rendered inside <Providers> so it re-renders
- * whenever consent state changes.
+ * Loads third-party scripts with the correct consent signals:
  *
- * Required env vars (set in apps/web/.env.local):
- *   NEXT_PUBLIC_GA4_MEASUREMENT_ID  — e.g. G-NBMQ66M04S
+ *  GA4  — only loaded when consent.analytics = true (GDPR gating)
+ *  GPT  — ALWAYS loaded regardless of consent state (better fill rate)
+ *         but with NPA(1) + restrictDataProcessing when consent is denied
+ *         or the user has CCPA opted out.
+ *
+ * GDPR  — NPA mode when !consent.advertising
+ * CCPA  — restrictDataProcessing when localStorage.nl_ccpa_opt_out === 'true'
+ * COPPA — NPA mode when isMinor === true (set by Providers via user_profiles.is_minor)
  */
 
 import Script from 'next/script';
@@ -16,10 +20,19 @@ import type { ConsentState } from '@platform/ui/web';
 
 interface Props {
   consent: ConsentState;
+  isMinor: boolean;
 }
 
-export function AnalyticsScripts({ consent }: Props) {
+export function AnalyticsScripts({ consent, isMinor }: Props) {
   const ga4Id = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
+
+  // CCPA opt-out and minor check must be evaluated client-side
+  const ccpaOptOut =
+    typeof window !== 'undefined' &&
+    localStorage.getItem('nl_ccpa_opt_out') === 'true';
+
+  // Non-personalised ads: no advertising consent, CCPA opt-out, or minor
+  const useNpa = !consent.advertising || ccpaOptOut || isMinor;
 
   return (
     <>
@@ -44,35 +57,39 @@ export function AnalyticsScripts({ consent }: Props) {
                   anonymize_ip: true,
                   cookie_flags: 'SameSite=None;Secure',
                 });
-                ${
-                  !consent.advertising
-                    ? `gtag('consent', 'update', {
-                        ad_storage:            'denied',
-                        ad_user_data:          'denied',
-                        ad_personalization:    'denied',
-                        analytics_storage:     'granted',
-                      });`
-                    : `gtag('consent', 'update', {
-                        ad_storage:            'granted',
-                        ad_user_data:          'granted',
-                        ad_personalization:    'granted',
-                        analytics_storage:     'granted',
-                      });`
-                }
+                gtag('consent', 'update', {
+                  ad_storage:            '${consent.advertising && !ccpaOptOut && !isMinor ? 'granted' : 'denied'}',
+                  ad_user_data:          '${consent.advertising && !ccpaOptOut && !isMinor ? 'granted' : 'denied'}',
+                  ad_personalization:    '${consent.advertising && !ccpaOptOut && !isMinor ? 'granted' : 'denied'}',
+                  analytics_storage:     'granted',
+                });
               `,
             }}
           />
         </>
       )}
 
-      {/* ── Google Ad Manager GPT — advertising consent required ──────────── */}
-      {consent.advertising && (
-        <Script
-          id="gpt-loader"
-          src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
-          strategy="afterInteractive"
-        />
-      )}
+      {/* ── Google Ad Manager GPT — always loaded, NPA mode when needed ─── */}
+      <Script
+        id="gpt-loader"
+        src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
+        strategy="afterInteractive"
+      />
+      <Script
+        id="gpt-init"
+        strategy="afterInteractive"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.googletag = window.googletag || { cmd: [] };
+            googletag.cmd.push(function() {
+              googletag.pubads().setRequestNonPersonalizedAds(${useNpa ? 1 : 0});
+              ${ccpaOptOut ? "googletag.pubads().setPrivacySettingsForAll({ restrictDataProcessing: true });" : ''}
+              googletag.enableServices();
+            });
+          `,
+        }}
+      />
     </>
   );
 }

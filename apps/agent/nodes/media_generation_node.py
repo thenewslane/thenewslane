@@ -27,6 +27,8 @@ except Exception:
 from config.settings import settings
 from utils.logger import get_logger
 from utils.supabase_client import db
+from utils.video_assembler import create_shorts_package
+from utils.voiceover_generator import VoiceoverGenerator
 
 log = get_logger(__name__)
 
@@ -450,6 +452,80 @@ class MediaGenerator:
             elapsed += POLL_INTERVAL
         raise RuntimeError(f"Prediction {prediction_id} timed out after {MAX_WAIT_TIME}s")
 
+    # ── Voiceover + Shorts (Tier 1 only) ─────────────────────────────────────
+
+    async def _generate_shorts_video(
+        self,
+        topic: Dict[str, Any],
+        topic_id: str,
+        thumbnail_url: Optional[str],
+    ) -> Optional[str]:
+        """
+        Generate an ElevenLabs voiceover, assemble a 9:16 Shorts MP4,
+        upload to Supabase Storage, and return the public URL.
+
+        Returns None on any failure so the caller can continue gracefully.
+        """
+        script = (topic.get("script") or topic.get("youtube_script") or "").strip()
+        if not script:
+            log.info("[shorts] No script for topic %s — skipping voiceover", topic_id)
+            return None
+
+        try:
+            vo_gen = VoiceoverGenerator()
+            remaining = vo_gen.check_quota()
+            if remaining < 2000:
+                log.warning(
+                    "[shorts] ElevenLabs quota low (%d chars) — skipping voiceover for %s",
+                    remaining, topic_id,
+                )
+                return None
+
+            vo_path = f"/tmp/vo_{topic_id}.mp3"
+            vo_gen.generate(script, vo_path)
+
+            # Download thumbnail locally if it's a remote URL
+            local_thumb: Optional[str] = None
+            if thumbnail_url:
+                try:
+                    img_resp = await self.http_client.get(thumbnail_url, timeout=20.0)
+                    img_resp.raise_for_status()
+                    suffix = ".jpg" if "jpeg" in img_resp.headers.get("content-type", "") else ".png"
+                    local_thumb = f"/tmp/thumb_{topic_id}{suffix}"
+                    Path(local_thumb).write_bytes(img_resp.content)
+                except Exception as exc:
+                    log.warning("[shorts] Could not download thumbnail for %s: %s", topic_id, exc)
+                    local_thumb = None
+
+            title       = topic.get("title", "")
+            source_name = topic.get("source_name") or topic.get("category") or "theNewslane"
+            ai_video    = topic.get("video_url")  # landscape AI video from Kling (may be None)
+
+            shorts_path = f"/tmp/shorts_{topic_id}.mp4"
+            create_shorts_package(
+                thumbnail_path=local_thumb,
+                ai_video_path=ai_video,
+                voiceover_path=vo_path,
+                title=title,
+                source_name=str(source_name),
+                output_path=shorts_path,
+            )
+
+            obj_name = f"{topic_id}/shorts_{uuid.uuid4().hex[:8]}.mp4"
+            public_url = await self.storage.upload_file(shorts_path, "videos", obj_name)
+
+            # Clean up temp files
+            for p in [vo_path, local_thumb, shorts_path]:
+                if p:
+                    Path(p).unlink(missing_ok=True)
+
+            log.info("[shorts] Uploaded Shorts video for %s → %s", topic_id, public_url)
+            return public_url
+
+        except Exception as exc:
+            log.error("[shorts] Shorts generation failed for %s: %s", topic_id, exc)
+            return None
+
     # ── Per-topic orchestrator ────────────────────────────────────────────────
 
     async def process_topic_media(self, topic: Dict[str, Any]) -> Dict[str, Any]:
@@ -475,7 +551,15 @@ class MediaGenerator:
             else:
                 results.update(result)
 
-        results["media_generated"]       = len(errors) == 0
+        # Tier 1 only: generate ElevenLabs voiceover + assemble Shorts video
+        if topic.get("viral_tier") == 1:
+            instagram_url = await self._generate_shorts_video(
+                topic, str(topic_id), results.get("thumbnail_url")
+            )
+            if instagram_url:
+                results["instagram_video_url"] = instagram_url
+
+        results["media_generated"] = len(errors) == 0
         if errors:
             results["media_generation_errors"] = errors
 

@@ -96,9 +96,10 @@ export interface TrendingTopic {
   schema_blocks:    Record<string, unknown> | null;
 
   // Media assets
-  thumbnail_url:    string | null;    // Flux 1.1 Pro image
-  video_url:        string | null;    // Assembled video
-  video_type:       VideoType | null;
+  thumbnail_url:       string | null;    // Flux 1.1 Pro image
+  video_url:           string | null;    // Assembled video
+  instagram_video_url: string | null;    // 9:16 portrait Shorts/Reels MP4
+  video_type:          VideoType | null;
 
   // Viral scoring
   viral_tier:       1 | 2 | 3 | null;
@@ -172,6 +173,7 @@ export interface DistributionLog {
   status:           DistributionStatus;
   platform_post_id: string | null;
   platform_url:     string | null;
+  video_url:        string | null;    // Supabase Storage URL of uploaded Shorts video
   posted_at:        ISODate | null;
   error_message:    string | null;
   retry_count:      number;

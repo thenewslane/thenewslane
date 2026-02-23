@@ -23,10 +23,12 @@
 
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { Providers }      from './providers';
-import { Header }         from '@/components/Header';
-import { Footer }         from '@/components/Footer';
-import { SkipToContent }  from '@/components/SkipToContent';
+import { Providers }        from './providers';
+import { Header }           from '@/components/Header';
+import { Footer }           from '@/components/Footer';
+import { SkipToContent }    from '@/components/SkipToContent';
+import { AuthorSchema }     from '@/components/seo/AuthorSchema';
+import { AdManagerProvider } from '@/components/ads/AdManager';
 
 // ---------------------------------------------------------------------------
 // Route segment config — ISR default for the entire app
@@ -86,6 +88,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Author entity markup — establishes E-E-A-T signals sitewide */}
+        <AuthorSchema />
+      </head>
       {/*
         suppressHydrationWarning on <body> is needed because browser extensions
         (e.g. Google Translate, password managers) inject attributes that cause
@@ -93,16 +99,18 @@ export default function RootLayout({
       */}
       <body suppressHydrationWarning>
         <Providers>
-          {/* Skip-to-content link for keyboard / screen-reader users */}
-          <SkipToContent />
+          <AdManagerProvider>
+            {/* Skip-to-content link for keyboard / screen-reader users */}
+            <SkipToContent />
 
-          <Header />
+            <Header />
 
-          <main id="main-content" tabIndex={-1}>
-            {children}
-          </main>
+            <main id="main-content" tabIndex={-1}>
+              {children}
+            </main>
 
-          <Footer />
+            <Footer />
+          </AdManagerProvider>
         </Providers>
       </body>
     </html>

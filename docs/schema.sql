@@ -166,9 +166,10 @@ CREATE TABLE public.trending_topics (
   schema_blocks    JSONB,                   -- schema.org structured data blocks
 
   -- Media assets (Supabase Storage paths or embed URLs)
-  thumbnail_url    TEXT,                    -- Flux 1.1 Pro generated image
-  video_url        TEXT,                    -- final assembled video
-  video_type       TEXT        CHECK (video_type IN (
+  thumbnail_url       TEXT,                 -- Flux 1.1 Pro generated image
+  video_url           TEXT,                 -- final assembled video
+  instagram_video_url TEXT,                 -- 9:16 portrait Shorts/Reels MP4 (Supabase Storage)
+  video_type          TEXT        CHECK (video_type IN (
                                  'kling_generated',
                                  'youtube_embed',
                                  'vimeo_embed'
@@ -291,6 +292,7 @@ CREATE TABLE public.distribution_log (
                                     )),
   platform_post_id      TEXT,
   platform_url          TEXT,
+  video_url             TEXT,                 -- Supabase Storage URL of uploaded Shorts video
   posted_at             TIMESTAMPTZ,
   error_message         TEXT,
   retry_count           INTEGER     NOT NULL DEFAULT 0,

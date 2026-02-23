@@ -21,13 +21,15 @@
 
 import React from 'react';
 import type { Metadata } from 'next';
+import Image             from 'next/image';
 import { notFound }       from 'next/navigation';
 import { getServerClient } from '@platform/supabase';
 import type { TrendingTopic } from '@platform/types';
 import { VideoPlayer, AuthorByline, SourceAttribution } from '@platform/ui/web';
 import { FaqAccordion }       from '@/components/FaqAccordion';
-import { ArticleAdSlot }      from '@/components/ArticleAdSlot';
+import { AdSlot }             from '@/components/ads/AdSlot';
 import { NavigableTopicCard } from '@/components/NavigableTopicCard';
+import { AD_UNITS }           from '@/config/ad-units';
 
 // ---------------------------------------------------------------------------
 // Route segment config
@@ -123,12 +125,31 @@ function extractFaqItems(schemaBlocks: Record<string, unknown> | null): FaqItem[
 }
 
 // ---------------------------------------------------------------------------
-// Extract VideoObject JSON-LD from schema_blocks (currently unused by pipeline)
+// Build VideoObject JSON-LD from topic columns
 // ---------------------------------------------------------------------------
-function extractVideoSchema(_schemaBlocks: Record<string, unknown> | null): Record<string, unknown> | null {
-  // The pipeline does not currently embed VideoObject JSON-LD in schema_blocks.
-  // Video metadata lives in video_url / video_type columns directly.
-  return null;
+function buildVideoSchema(
+  topic: TrendingTopic,
+  articleUrl: string,
+  embedId: string | undefined,
+): Record<string, unknown> | null {
+  if (!topic.video_url && !embedId) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type':    'VideoObject',
+    name:        topic.title,
+    description: topic.summary ?? '',
+    thumbnailUrl: topic.thumbnail_url ?? undefined,
+    uploadDate:   topic.published_at ?? topic.created_at,
+    ...(topic.video_url ? { contentUrl: topic.video_url } : {}),
+    ...(embedId
+      ? { embedUrl: `https://www.youtube.com/embed/${embedId}` }
+      : {}),
+    publisher: {
+      '@type': 'Organization',
+      name:    pubName,
+      url:     baseUrl,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +183,9 @@ export async function generateMetadata(
       publishedTime:   publishedAt,
       modifiedTime:    topic.updated_at,
       authors:         [authorName],
-      images:          imageUrl ? [{ url: imageUrl, alt: topic.title }] : [],
+      images:          imageUrl
+        ? [{ url: imageUrl, alt: topic.title, width: 1200, height: 628 }]
+        : [],
       tags:            topic.iab_tags ?? [],
       siteName:        pubName,
     },
@@ -205,7 +228,6 @@ export default async function ArticlePage({
 
   const publishedAt  = topic.published_at ?? topic.created_at;
   const articleUrl   = `${baseUrl}/trending/${topic.slug}`;
-  const videoSchema  = extractVideoSchema(topic.schema_blocks);
 
   // Body paragraphs (split on double newline, fallback to full article)
   const paragraphs = topic.article
@@ -215,6 +237,7 @@ export default async function ArticlePage({
   // Resolve video data — embed ID lives in schema_blocks for YouTube/Vimeo
   const sb         = topic.schema_blocks ?? {};
   const embedId    = typeof sb['video_id'] === 'string' ? sb['video_id'] : undefined;
+  const videoSchema = buildVideoSchema(topic, articleUrl, embedId);
   const hasVideo   =
     (topic.video_type === 'youtube_embed' && !!embedId) ||
     (topic.video_type === 'vimeo_embed'   && !!embedId) ||
@@ -304,11 +327,22 @@ export default async function ArticlePage({
 
         {/* ── Hero thumbnail — shown at top only when there is no video ── */}
         {!hasVideo && topic.thumbnail_url && (
-          <div style={{ marginBottom: 'var(--spacing-6)', borderRadius: 'var(--radius-large)', overflow: 'hidden' }}>
-            <img
+          <div
+            style={{
+              position:     'relative',
+              marginBottom: 'var(--spacing-6)',
+              borderRadius: 'var(--radius-large)',
+              overflow:     'hidden',
+              aspectRatio:  '16 / 9',
+            }}
+          >
+            <Image
               src={topic.thumbnail_url}
               alt={topic.title}
-              style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: 480 }}
+              fill
+              priority
+              sizes="(max-width: 800px) 100vw, 800px"
+              style={{ objectFit: 'cover' }}
             />
           </div>
         )}
@@ -369,13 +403,16 @@ export default async function ArticlePage({
                   </div>
                 )}
 
-                {/* Ad after 3rd paragraph */}
+                {/* In-content ad after 3rd paragraph (all devices) */}
                 {idx === 2 && (
-                  <ArticleAdSlot
-                    unitPath="/theNewslane/article-mid"
-                    sizes={[[728, 90], [320, 50]]}
-                    id="ad-article-mid"
-                  />
+                  <div style={{ margin: 'var(--spacing-6) 0', display: 'flex', justifyContent: 'center' }}>
+                    <AdSlot
+                      unitPath={AD_UNITS.IN_CONTENT.unitPath}
+                      sizes={AD_UNITS.IN_CONTENT.sizes as [number, number][]}
+                      targeting={{ iab_categories: topic.iab_tags ?? [] }}
+                      id="gam-in-content"
+                    />
+                  </div>
                 )}
               </React.Fragment>
             ))}
@@ -400,6 +437,29 @@ export default async function ArticlePage({
           />
         </div>
       </article>
+
+      {/* ── Mobile anchor ad — fixed bottom, mobile only ── */}
+      <div
+        style={{
+          position:   'fixed',
+          bottom:     0,
+          left:       0,
+          right:      0,
+          zIndex:     50,
+          display:    'flex',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+        }}
+        className="mobile-anchor-ad"
+      >
+        <div style={{ pointerEvents: 'auto' }}>
+          <AdSlot
+            unitPath={AD_UNITS.MOBILE_ANCHOR.unitPath}
+            sizes={AD_UNITS.MOBILE_ANCHOR.sizes as [number, number][]}
+            id="gam-mobile-anchor"
+          />
+        </div>
+      </div>
 
       {/* ── Related Topics ── */}
       {related.length > 0 && (
