@@ -177,20 +177,39 @@ export function Header() {
         </div>
       </div>
 
-      {/* ── Mobile nav drawer ─────────────────────────────────────────── */}
+      {/* ── Mobile nav drawer (overlay — does not push page) ────────────── */}
       {menuOpen && (
-        <nav
-          id="mobile-nav"
-          aria-label="Mobile navigation"
-          style={{
-            borderTop:       '1px solid rgba(0,0,0,.08)',
-            backgroundColor: 'var(--color-card-light)',
-            padding:         'var(--spacing-3) var(--spacing-4)',
-            display:         'flex',
-            flexDirection:   'column',
-            gap:             'var(--spacing-1)',
-          }}
-        >
+        <>
+          <div
+            role="presentation"
+            aria-hidden
+            onClick={() => setMenuOpen(false)}
+            style={{
+              position:   'fixed',
+              inset:      0,
+              top:        60,
+              zIndex:    49,
+              background: 'rgba(0,0,0,.25)',
+            }}
+          />
+          <nav
+            id="mobile-nav"
+            aria-label="Mobile navigation"
+            style={{
+              position:     'fixed',
+              top:         60,
+              left:         0,
+              right:        0,
+              zIndex:       50,
+              borderTop:    '1px solid rgba(0,0,0,.08)',
+              boxShadow:    '0 8px 24px rgba(0,0,0,.12)',
+              backgroundColor: 'var(--color-card-light)',
+              padding:      'var(--spacing-3) var(--spacing-4)',
+              display:      'flex',
+              flexDirection: 'column',
+              gap:          'var(--spacing-1)',
+            }}
+          >
           {NAV_LINKS.map(({ href, label }) => {
             const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
             return (
@@ -235,7 +254,8 @@ export function Header() {
           >
             Submit Story
           </Link>
-        </nav>
+          </nav>
+        </>
       )}
     </header>
   );

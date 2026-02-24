@@ -505,8 +505,133 @@ export default async function ArticlePage({
                     />
                   </div>
                 )}
+
+                {/* Similar News after 4th paragraph (at least 1 line of content between ad and this) */}
+                {idx === 3 && related.length > 0 && (
+                  <section
+                    style={{
+                      marginTop:   'var(--spacing-8)',
+                      marginBottom: 'var(--spacing-6)',
+                    }}
+                  >
+                    <h2
+                      style={{
+                        fontFamily:   'var(--font-heading)',
+                        fontSize:     'clamp(18px, 3vw, 24px)',
+                        fontWeight:   700,
+                        color:        'var(--color-text-primary-light)',
+                        marginBottom: 'var(--spacing-4)',
+                      }}
+                    >
+                      Similar News
+                    </h2>
+                    <div
+                      style={{
+                        display:        'flex',
+                        flexDirection:  'row',
+                        gap:            'var(--spacing-4)',
+                        overflowX:      'auto',
+                        overflowY:      'hidden',
+                        paddingBottom:  'var(--spacing-2)',
+                        scrollSnapType: 'x mandatory',
+                        WebkitOverflowScrolling: 'touch',
+                      }}
+                    >
+                      {related.map(rel => (
+                        <div
+                          key={rel.id}
+                          style={{
+                            flex:            '0 0 50%',
+                            minWidth:        280,
+                            maxWidth:        400,
+                            display:         'flex',
+                            flexDirection:   'column',
+                            scrollSnapAlign: 'start',
+                          }}
+                        >
+                          <NavigableTopicCard topic={rel} />
+                          <span
+                            style={{
+                              marginTop:    'var(--spacing-1)',
+                              fontSize:     '11px',
+                              fontFamily:   'var(--font-body)',
+                              color:        'var(--color-text-muted-light)',
+                              overflow:     'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace:   'nowrap',
+                            }}
+                          >
+                            /trending/{rel.slug}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
               </React.Fragment>
             ))}
+            {/* If fewer than 4 paragraphs, show Similar News after the last one (no “1 line” gap) */}
+            {paragraphs.length > 0 && paragraphs.length < 4 && related.length > 0 && (
+              <section
+                style={{
+                  marginTop:   'var(--spacing-8)',
+                  marginBottom: 'var(--spacing-6)',
+                }}
+              >
+                <h2
+                  style={{
+                    fontFamily:   'var(--font-heading)',
+                    fontSize:     'clamp(18px, 3vw, 24px)',
+                    fontWeight:   700,
+                    color:        'var(--color-text-primary-light)',
+                    marginBottom: 'var(--spacing-4)',
+                  }}
+                >
+                  Similar News
+                </h2>
+                <div
+                  style={{
+                    display:        'flex',
+                    flexDirection:  'row',
+                    gap:            'var(--spacing-4)',
+                    overflowX:      'auto',
+                    overflowY:      'hidden',
+                    paddingBottom:  'var(--spacing-2)',
+                    scrollSnapType: 'x mandatory',
+                    WebkitOverflowScrolling: 'touch',
+                  }}
+                >
+                  {related.map(rel => (
+                    <div
+                      key={rel.id}
+                      style={{
+                        flex:            '0 0 50%',
+                        minWidth:        280,
+                        maxWidth:        400,
+                        display:         'flex',
+                        flexDirection:   'column',
+                        scrollSnapAlign: 'start',
+                      }}
+                    >
+                      <NavigableTopicCard topic={rel} />
+                      <span
+                        style={{
+                          marginTop:    'var(--spacing-1)',
+                          fontSize:     '11px',
+                          fontFamily:   'var(--font-body)',
+                          color:        'var(--color-text-muted-light)',
+                          overflow:     'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace:   'nowrap',
+                        }}
+                      >
+                        /trending/{rel.slug}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         ) : (
           <p
@@ -575,70 +700,6 @@ export default async function ArticlePage({
             />
           </div>
         </div>
-      )}
-
-      {/* ── Similar News: horizontal carousel, 5 cards at 50% width, reduced slug font ── */}
-      {related.length > 0 && (
-        <section
-          style={{
-            maxWidth:    800,
-            margin:      '0 auto',
-            padding:     '0 var(--spacing-4) var(--spacing-16)',
-          }}
-        >
-          <h2
-            style={{
-              fontFamily:   'var(--font-heading)',
-              fontSize:     'clamp(18px, 3vw, 24px)',
-              fontWeight:   700,
-              color:        'var(--color-text-primary-light)',
-              marginBottom: 'var(--spacing-4)',
-            }}
-          >
-            Similar News
-          </h2>
-          <div
-            style={{
-              display:        'flex',
-              flexDirection:  'row',
-              gap:            'var(--spacing-4)',
-              overflowX:      'auto',
-              overflowY:      'hidden',
-              paddingBottom:  'var(--spacing-2)',
-              scrollSnapType: 'x mandatory',
-              WebkitOverflowScrolling: 'touch',
-            }}
-          >
-            {related.map(rel => (
-              <div
-                key={rel.id}
-                style={{
-                  flex:           '0 0 50%',
-                  minWidth:       280,
-                  maxWidth:       400,
-                  display:        'flex',
-                  flexDirection:  'column',
-                  scrollSnapAlign: 'start',
-                }}
-              >
-                <NavigableTopicCard topic={rel} />
-                <span
-                  style={{
-                    marginTop:    'var(--spacing-1)',
-                    fontSize:     '11px',
-                    fontFamily:   'var(--font-body)',
-                    color:        'var(--color-text-muted-light)',
-                    overflow:     'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace:   'nowrap',
-                  }}
-                >
-                  /trending/{rel.slug}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
       )}
     </>
   );
