@@ -361,26 +361,20 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
             # Convert iab_categories list → iab_tags TEXT[]
             iab_tags: list[str] = topic.get("iab_categories") or []
 
-            # Map category name to category_id for database
-            category_id = None
-            category_name = topic.get("category")
-            if category_name:
-                category_mapping = {
-                    "Technology": 1,
-                    "Entertainment": 2,
-                    "Sports": 3,
-                    "Politics": 4,
-                    "Business & Finance": 5,
-                    "Health & Science": 6,
-                    "Lifestyle": 7,
-                    "World News": 8,
-                    "Culture & Arts": 9,
-                    "Environment": 10
-                }
-                category_id = category_mapping.get(category_name)
-                if not category_id:
-                    log.warning("[publish] Unknown category '%s' for topic '%s', defaulting to World News",
-                                category_name, (topic.get("title") or "")[:30])
+            # Use category_id from classification node when set; else derive from category name
+            category_id = topic.get("category_id")
+            if category_id is None:
+                category_name = topic.get("category")
+                if category_name:
+                    category_mapping = {
+                        "Technology": 1, "Entertainment": 2, "Sports": 3, "Politics": 4,
+                        "Business & Finance": 5, "Health & Science": 6, "Science & Health": 6,
+                        "Lifestyle": 7, "World News": 8, "Culture & Arts": 9, "Environment": 10,
+                    }
+                    category_id = category_mapping.get(category_name)
+                if category_id is None:
+                    log.warning("[publish] No category_id/category for topic '%s', defaulting to World News",
+                                (topic.get("title") or "")[:30])
                     category_id = 8  # Default to World News
 
             patch: dict[str, Any] = {

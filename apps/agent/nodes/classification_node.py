@@ -20,21 +20,43 @@ log = get_logger(__name__)
 # Predefined topic categories
 TOPIC_CATEGORIES = [
     "Technology",
-    "Politics", 
+    "Politics",
     "Business & Finance",
     "Entertainment",
     "Sports",
-    "Science & Health", 
+    "Science & Health",
     "World News",
     "Lifestyle",
     "Environment",
-    "Education"
+    "Education",
 ]
+
+# Category name → integer ID for DB (trending_topics.category_id)
+CATEGORY_NAME_TO_ID: dict[str, int] = {
+    "Technology": 1,
+    "Entertainment": 2,
+    "Sports": 3,
+    "Politics": 4,
+    "Business & Finance": 5,
+    "Health & Science": 6,
+    "Science & Health": 6,  # alias
+    "Lifestyle": 7,
+    "World News": 8,
+    "Culture & Arts": 9,
+    "Environment": 10,
+    "Education": 8,  # map to World News for now
+}
+DEFAULT_CATEGORY_ID = 8  # World News
+
+
+def _category_to_id(category_name: str) -> int:
+    """Return category_id for a category name; default to World News (8) if unknown."""
+    return CATEGORY_NAME_TO_ID.get(category_name, DEFAULT_CATEGORY_ID)
 
 
 class ClassificationNode:
     """Topic classification using Claude Haiku batch API."""
-    
+
     def __init__(self) -> None:
         if not settings.anthropic_api_key:
             raise ValueError("ANTHROPIC_API_KEY is required for ClassificationNode")
@@ -81,13 +103,12 @@ Return only the category name, nothing else."""
             
             try:
                 category = self._classify_single_topic(topic_name, headline_cluster)
-                topic_with_category = {**topic, "category": category}
+                category_id = _category_to_id(category)
+                topic_with_category = {**topic, "category": category, "category_id": category_id}
                 classified_topics.append(topic_with_category)
-                
             except Exception as e:
                 log.error("ClassificationNode: failed to classify topic '%s': %s", topic_name, e)
-                # Add default category on error
-                topic_with_category = {**topic, "category": "World News"}
+                topic_with_category = {**topic, "category": "World News", "category_id": DEFAULT_CATEGORY_ID}
                 classified_topics.append(topic_with_category)
         
         log.info("ClassificationNode: successfully classified %d topics", len(classified_topics))
