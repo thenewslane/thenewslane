@@ -319,15 +319,27 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
         if category_id is None:
             category_id = 8
 
+    # Write as draft; fact-check agent will set fact_check=yes and status=published later
     patch: dict[str, Any] = {
-        "status": "published", "published_at": now_iso, "batch_id": batch_id, "slug": slug,
-        "title": topic.get("title") or topic.get("keyword", ""), "category_id": category_id,
-        "viral_tier": topic.get("viral_tier"), "viral_score": topic.get("viral_score"),
-        "summary": topic.get("summary_30w") or "", "article": topic.get("article") or "",
-        "script": topic.get("youtube_script") or "", "iab_tags": iab_tags,
-        "social_copy": social_copy or None, "schema_blocks": schema_blocks or None,
-        "thumbnail_url": topic.get("thumbnail_url"), "video_url": topic.get("video_url"),
-        "instagram_video_url": topic.get("instagram_video_url"), "video_type": db_video_type,
+        "status": "draft",
+        "fact_check": "no",
+        "published_at": None,
+        "batch_id": batch_id,
+        "slug": slug,
+        "title": topic.get("title") or topic.get("keyword", ""),
+        "category_id": category_id,
+        "viral_tier": topic.get("viral_tier"),
+        "viral_score": topic.get("viral_score"),
+        "summary": topic.get("summary_30w") or "",
+        "article": topic.get("article") or "",
+        "script": topic.get("youtube_script") or "",
+        "iab_tags": iab_tags,
+        "social_copy": social_copy or None,
+        "schema_blocks": schema_blocks or None,
+        "thumbnail_url": topic.get("thumbnail_url"),
+        "video_url": topic.get("video_url"),
+        "instagram_video_url": topic.get("instagram_video_url"),
+        "video_type": db_video_type,
     }
     patch = {k: v for k, v in patch.items() if v is not None}
 
@@ -348,15 +360,13 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
         patch_existing = {k: v for k, v in patch_existing.items() if v is not None}
         try:
             db.client.table("trending_topics").update(patch_existing).eq("id", update_id).execute()
-            log.info("[publish] updated existing article  id=%s  slug=%s", update_id, slug)
-            fire_external(slug)
+            log.info("[publish] updated existing → draft  id=%s  slug=%s", update_id, slug)
             return update_id, None
         except Exception as exc:
             return None, f"publish: failed to update existing {update_id}: {exc}"
     try:
         db.client.table("trending_topics").update(patch).eq("id", topic_id).execute()
-        log.info("[publish] published %s  id=%s  slug=%s", topic.get("title", "?"), topic_id, slug)
-        fire_external(slug)
+        log.info("[publish] saved draft (fact_check=no)  %s  id=%s  slug=%s", topic.get("title", "?"), topic_id, slug)
         return topic_id, None
     except Exception as exc:
         return None, f"publish: failed for {topic_id}: {exc}"
