@@ -280,9 +280,22 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
     topic_id: str | None = topic.get("id") or topic.get("topic_id")
     if not topic_id:
         return None, f"publish: topic has no id: {topic.get('title', 'unknown')}"
-    if not topic.get("summary_30w") or not topic.get("article"):
-        log.warning("[publish] skipping topic '%s' - missing content", (topic.get("title") or "unknown")[:30])
-        return None, None  # skip, no error
+
+    summary_val = (topic.get("summary_30w") or "").strip()
+    article_val = (topic.get("article") or "").strip()
+    if not summary_val or not article_val:
+        missing = []
+        if not summary_val:
+            missing.append("summary_30w")
+        if not article_val:
+            missing.append("article")
+        log.warning(
+            "[publish] skipping topic '%s' (id=%s) - missing or empty content: %s",
+            (topic.get("title") or "unknown")[:40],
+            topic_id,
+            ", ".join(missing),
+        )
+        return None, None  # skip without error so pipeline continues
 
     slug: str = (topic.get("slug") or "").strip()
     if not slug:
@@ -320,7 +333,8 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
         if category_id is None:
             category_id = 8
 
-    # Write as draft; fact-check agent will set fact_check=yes and status=published later
+    # Write as draft; fact-check agent will set fact_check=yes and status=published later.
+    # summary/article are guaranteed non-empty here (we skip above otherwise).
     patch: dict[str, Any] = {
         "status": "draft",
         "fact_check": "no",
@@ -331,8 +345,8 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
         "category_id": category_id,
         "viral_tier": topic.get("viral_tier"),
         "viral_score": topic.get("viral_score"),
-        "summary": topic.get("summary_30w") or "",
-        "article": topic.get("article") or "",
+        "summary": summary_val,
+        "article": article_val,
         "script": topic.get("youtube_script") or "",
         "iab_tags": iab_tags,
         "social_copy": social_copy or None,

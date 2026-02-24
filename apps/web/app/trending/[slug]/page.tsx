@@ -204,7 +204,12 @@ export async function generateMetadata(
   const url        = `${baseUrl}/trending/${topic.slug}`;
   const imageUrl   = topic.thumbnail_url ?? undefined;
   const discoverOgImage = discoverImageUrl(imageUrl, supabaseHostname) ?? imageUrl;
-  const description = topic.summary ?? `${pubName} — AI-curated trending news.`;
+  const sbMeta     = topic.schema_blocks as Record<string, unknown> | null;
+  const description =
+    (topic.summary && topic.summary.trim()) ||
+    (typeof sbMeta?.meta_description === 'string' && sbMeta.meta_description.trim()) ||
+    (typeof sbMeta?.seo_title === 'string' && sbMeta.seo_title.trim()) ||
+    `${pubName} — AI-curated trending news.`;
   const publishedAt = topic.published_at ?? topic.created_at;
 
   return {
@@ -266,14 +271,23 @@ export default async function ArticlePage({
   const articleUrl   = `${baseUrl}/trending/${topic.slug}`;
   const allowAds     = (topic.schema_blocks as Record<string, unknown> | null)?.brand_safe !== false;
 
-  // Body paragraphs (split on double newline, fallback to full article)
-  const paragraphs = topic.article
-    ? topic.article.split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
+  // Summary: prefer DB column, then schema_blocks.meta_description / seo_title
+  const sb = topic.schema_blocks as Record<string, unknown> | null;
+  const displaySummary =
+    (topic.summary && topic.summary.trim()) ||
+    (typeof sb?.meta_description === 'string' && sb.meta_description.trim()) ||
+    (typeof sb?.seo_title === 'string' && sb.seo_title.trim()) ||
+    null;
+
+  // Body paragraphs (split on double newline); fallback to single paragraph if article is one line
+  const rawArticle = (topic.article && topic.article.trim()) || '';
+  const paragraphs = rawArticle
+    ? rawArticle.split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
     : [];
+  const hasArticleBody = paragraphs.length > 0;
 
   // Resolve video data — embed ID lives in schema_blocks for YouTube/Vimeo
-  const sb         = topic.schema_blocks ?? {};
-  const embedId    = typeof sb['video_id'] === 'string' ? sb['video_id'] : undefined;
+  const embedId    = typeof sb?.['video_id'] === 'string' ? sb['video_id'] : undefined;
   const videoSchema = buildVideoSchema(topic, articleUrl, embedId);
   const hasVideo   =
     (topic.video_type === 'youtube_embed' && !!embedId) ||
@@ -285,7 +299,7 @@ export default async function ArticlePage({
     '@context':        'https://schema.org',
     '@type':           'NewsArticle',
     headline:          topic.title,
-    description:       topic.summary ?? '',
+    description:       displaySummary ?? topic.summary ?? '',
     url:               articleUrl,
     datePublished:     publishedAt,
     dateModified:      topic.updated_at,
@@ -402,7 +416,7 @@ export default async function ArticlePage({
         )}
 
         {/* ── Summary lead ── */}
-        {topic.summary && (
+        {displaySummary && (
           <p
             style={{
               fontFamily:  'var(--font-body)',
@@ -415,12 +429,12 @@ export default async function ArticlePage({
               borderLeft:  '3px solid var(--color-primary)',
             }}
           >
-            {topic.summary}
+            {displaySummary}
           </p>
         )}
 
         {/* ── Article body — video injected after paragraph 1 ── */}
-        {paragraphs.length > 0 && (
+        {hasArticleBody ? (
           <div style={{ marginBottom: 'var(--spacing-6)' }}>
             {paragraphs.map((para, idx) => (
               <React.Fragment key={idx}>
@@ -471,6 +485,18 @@ export default async function ArticlePage({
               </React.Fragment>
             ))}
           </div>
+        ) : (
+          <p
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize:   '16px',
+              lineHeight: 1.8,
+              color:      'var(--color-text-muted-light)',
+              margin:     '0 0 var(--spacing-6)',
+            }}
+          >
+            Content is being prepared. Check back soon.
+          </p>
         )}
 
         {/* ── FAQ accordion ── */}
