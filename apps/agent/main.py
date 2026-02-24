@@ -87,6 +87,7 @@ def run_pipeline(batch_id: str | None = None) -> dict:
         "content_generated_topics": [],
         "media_generated_topics":   [],
         "published_topic_ids":      [],
+        "fact_checked_topic_ids":   [],
         "errors":                   [],
     }
 
@@ -123,7 +124,8 @@ def run_pipeline(batch_id: str | None = None) -> dict:
 
     raw_count       = len(final_state.get("raw_topics", []))
     processed_count = len(final_state.get("viral_scored_topics", []))
-    published_count = len(final_state.get("published_topic_ids", []))
+    # Topics actually published to site (after fact-check); drafts count as published_topic_ids
+    published_count = len(final_state.get("fact_checked_topic_ids", []))
     rejected_count  = max(0, processed_count - published_count)
 
     from utils.supabase_client import db as _db2  # noqa: PLC0415

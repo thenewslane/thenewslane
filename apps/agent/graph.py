@@ -3,7 +3,7 @@ graph.py — LangGraph StateGraph for the theNewslane AI pipeline.
 
 Node sequence:
   collect → predict_viral → filter_brand_safety → classify →
-  generate_content → source_video → generate_media → publish
+  generate_content → source_video → generate_media → publish → fact_check
 
 Conditional edge after predict_viral:
   If no topics score ≥ 2 → END (logged, pipeline completes gracefully).
@@ -48,7 +48,8 @@ class AgentState(TypedDict):
     classified_topics: list[dict[str, Any]]        # topics with category
     content_generated_topics: list[dict[str, Any]] # topics with article content
     media_generated_topics: list[dict[str, Any]]   # topics with media assets
-    published_topic_ids: list[str]                 # DB IDs of published topics
+    published_topic_ids: list[str]                 # DB IDs of published topics (drafts from publish node)
+    fact_checked_topic_ids: list[str]              # DB IDs set to published by fact-check agent
 
     # Errors are appended (reducer), never replaced, across all nodes
     errors: Annotated[list[str], operator.add]
@@ -425,11 +426,29 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
     return result
 
 
+# ── Node: fact_check ──────────────────────────────────────────────────────────
+
+
+def _node_fact_check(state: AgentState) -> dict[str, Any]:
+    """
+    Run fact-check agent: pick rows with fact_check=no, verify, set fact_check=yes
+    and status=published, trigger revalidate/IndexNow.
+    """
+    from nodes.fact_check_node import run_fact_check_batch  # noqa: PLC0415
+
+    published_ids, errs = run_fact_check_batch()
+    log.info("[fact_check] published=%d  errors=%d", len(published_ids), len(errs))
+    result: dict[str, Any] = {"fact_checked_topic_ids": published_ids}
+    if errs:
+        result["errors"] = errs
+    return result
+
+
 # ── Graph assembly ─────────────────────────────────────────────────────────────
 
 
 def build_graph() -> Any:
-    """Build and compile the 8-node pipeline StateGraph."""
+    """Build and compile the 9-node pipeline StateGraph (including fact_check)."""
     g = StateGraph(AgentState)
 
     g.add_node("collect",             _node_collect)
@@ -440,6 +459,7 @@ def build_graph() -> Any:
     g.add_node("source_video",        _node_source_video)
     g.add_node("generate_media",      _node_generate_media)
     g.add_node("publish",             _node_publish)
+    g.add_node("fact_check",          _node_fact_check)
 
     g.set_entry_point("collect")
     g.add_edge("collect", "predict_viral")
@@ -455,7 +475,8 @@ def build_graph() -> Any:
     g.add_edge("generate_content",    "source_video")
     g.add_edge("source_video",        "generate_media")
     g.add_edge("generate_media",      "publish")
-    g.add_edge("publish",             END)
+    g.add_edge("publish",             "fact_check")
+    g.add_edge("fact_check",          END)
 
     return g.compile()
 
