@@ -35,11 +35,13 @@ function seedGradient(seed: string): string {
 }
 
 export function TopicCard({ topic, onPress, disabled = false }: TopicCardProps) {
-  const sb = topic.schema_blocks ?? null;
+  const sb = topic.schema_blocks as Record<string, unknown> | null | undefined;
+  const metaDesc = sb?.['meta_description'];
+  const seoTitle = sb?.['seo_title'];
   const rawSummary =
     (topic.summary && topic.summary.trim()) ||
-    (typeof (sb as Record<string, unknown>)?.['meta_description'] === 'string' && (sb as Record<string, unknown>)['meta_description'].trim()) ||
-    (typeof (sb as Record<string, unknown>)?.['seo_title'] === 'string' && (sb as Record<string, unknown>)['seo_title'].trim()) ||
+    (typeof metaDesc === 'string' && metaDesc.trim()) ||
+    (typeof seoTitle === 'string' && seoTitle.trim()) ||
     '';
   const summary      = rawSummary ? truncateWords(rawSummary, 80) : null;
   const categoryName = topic.category?.name ?? null;
