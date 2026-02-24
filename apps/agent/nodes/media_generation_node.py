@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -539,6 +540,54 @@ class MediaGenerator:
             log.warning("Could not upload default logo: %s", exc)
             return ""
 
+    async def _upload_external_thumbnail(self, image_url: str, topic_id: str) -> Optional[str]:
+        """
+        Download an external image and upload to Supabase thumbnails so article pages
+        always use a stable URL (avoids broken images from hotlink blocks or expiry).
+        Returns Supabase public URL or None on failure (caller can fall back to original).
+        """
+        try:
+            resp = await self.http_client.get(
+                image_url,
+                timeout=15.0,
+                follow_redirects=True,
+                headers={"User-Agent": USER_AGENT},
+            )
+            if resp.status_code != 200:
+                log.debug("External thumbnail download failed %s: %s", resp.status_code, image_url[:60])
+                return None
+            data = resp.content
+            if not data or len(data) < 100:
+                return None
+            # Infer extension from Content-Type or URL
+            ct = (resp.headers.get("content-type") or "").split(";")[0].strip().lower()
+            ext = ".jpg"
+            if "png" in ct:
+                ext = ".png"
+            elif "webp" in ct:
+                ext = ".webp"
+            elif "gif" in ct:
+                ext = ".gif"
+            else:
+                path_lower = (image_url or "").split("?")[0].lower()
+                if ".png" in path_lower:
+                    ext = ".png"
+                elif ".webp" in path_lower:
+                    ext = ".webp"
+            obj_name = f"{topic_id}{ext}"
+            with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+                tmp.write(data)
+                tmp_path = tmp.name
+            try:
+                public_url = await self.storage.upload_file(tmp_path, "thumbnails", obj_name)
+                log.debug("Mirrored external thumbnail to Supabase: %s", obj_name)
+                return public_url
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
+        except Exception as exc:
+            log.debug("Upload external thumbnail failed for %s: %s", topic_id, exc)
+            return None
+
     # ── Main thumbnail orchestrator ───────────────────────────────────────────
 
     async def generate_thumbnail(self, topic: Dict[str, Any]) -> Dict[str, Any]:
@@ -546,6 +595,8 @@ class MediaGenerator:
         Copyright-free images first (min 1200px); AI only when none found.
         Order: YouTube → Unsplash → Pexels → Pollination → Wikimedia → Wikipedia
                → Together.ai (Stable Diffusion) → default theNewslane logo.
+        External URLs (Unsplash, Pexels, Wikimedia, Wikipedia) are mirrored to
+        Supabase so article pages get stable thumbnail URLs.
         """
         topic_id = topic.get("id") or f"topic_{uuid.uuid4().hex[:8]}"
 
@@ -559,6 +610,11 @@ class MediaGenerator:
         ]:
             url = await coro
             if url:
+                # YouTube URLs are stable; mirror other externals to Supabase to avoid broken images
+                if name != "YouTube":
+                    supabase_url = await self._upload_external_thumbnail(url, topic_id)
+                    if supabase_url:
+                        url = supabase_url
                 return {"thumbnail_url": url}
 
         sd_url = await self._together_sd_thumbnail(topic, topic_id)

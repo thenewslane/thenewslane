@@ -111,6 +111,10 @@ const nextConfig = {
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
       { protocol: 'https', hostname: 'commons.wikimedia.org' },
 
+      // Copyright-free stock (pipeline thumbnails)
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'images.pexels.com' },
+
       // Google S2 favicon service (used by SourceAttribution component)
       { protocol: 'https', hostname: 'www.google.com' },
     ],
