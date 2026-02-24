@@ -12,17 +12,23 @@ import type { BatchRun }   from '@platform/types';
 
 // ── Data fetching ──────────────────────────────────────────────────────────
 async function getDashboardStats(): Promise<
-  | { ok: true; topicsToday: number; totalUsers: number; recentRuns: BatchRun[]; distRate: number | null; predAccuracy: number | null; distTotal: number; predTotal: number }
+  | { ok: true; topicsToday: number; draftCount: number; totalUsers: number; recentRuns: BatchRun[]; distRate: number | null; predAccuracy: number | null; distTotal: number; predTotal: number; recentDrafts: { id: string; title: string; slug: string; created_at: string }[] }
   | { ok: false; error: string }
 > {
   try {
     const supabase = getServerClient();
-    const [topicsToday, totalUsers, recentRuns, distRows, predRows] = await Promise.all([
+    const [topicsToday, draftCountRes, totalUsers, recentRuns, distRows, predRows, recentDrafts] = await Promise.all([
     supabase
       .from('trending_topics')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'published')
+      .eq('fact_check', 'yes')
       .gte('published_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+
+    supabase
+      .from('trending_topics')
+      .select('id', { count: 'exact', head: true })
+      .eq('fact_check', 'no'),
 
     supabase
       .from('user_profiles')
@@ -44,6 +50,13 @@ async function getDashboardStats(): Promise<
       .select('tier_assigned, actual_virality_score')
       .not('actual_virality_score', 'is', null)
       .limit(200),
+
+    supabase
+      .from('trending_topics')
+      .select('id, title, slug, created_at')
+      .eq('fact_check', 'no')
+      .order('created_at', { ascending: false })
+      .limit(5),
   ]);
 
   // Distribution success rate
@@ -65,12 +78,14 @@ async function getDashboardStats(): Promise<
     return {
       ok: true as const,
       topicsToday:   topicsToday.count  ?? 0,
+      draftCount:    draftCountRes.count ?? 0,
       totalUsers:    totalUsers.count   ?? 0,
       recentRuns:    (recentRuns.data   ?? []) as BatchRun[],
       distRate,
       predAccuracy,
       distTotal,
       predTotal,
+      recentDrafts:  (recentDrafts.data ?? []) as { id: string; title: string; slug: string; created_at: string }[],
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -149,11 +164,17 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Stat cards ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard
           label="Topics published today"
           value={stats.topicsToday}
-          sub="Since midnight UTC"
+          sub="Fact-checked, since midnight UTC"
+        />
+        <StatCard
+          label="Drafts (pending fact-check)"
+          value={stats.draftCount}
+          sub="fact_check=no"
+          accent={stats.draftCount > 0 ? 'amber' : undefined}
         />
         <StatCard
           label="Prediction accuracy"
@@ -181,6 +202,38 @@ export default async function DashboardPage() {
           sub="All time"
         />
       </div>
+
+      {/* ── Recent drafts (pending fact-check) ──────────────────────────── */}
+      {stats.recentDrafts.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900">Recent drafts (pending fact-check)</h2>
+            <span className="text-xs text-slate-400">{stats.draftCount} total</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full admin-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Slug</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recentDrafts.map(d => (
+                  <tr key={d.id}>
+                    <td className="font-medium text-slate-900 truncate max-w-xs">{d.title}</td>
+                    <td><code className="text-xs text-slate-500">{d.slug}</code></td>
+                    <td className="text-slate-500 text-xs whitespace-nowrap">
+                      {new Date(d.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Runs log ───────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
