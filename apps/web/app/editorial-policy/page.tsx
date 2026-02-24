@@ -146,9 +146,9 @@ export default function EditorialPolicyPage() {
 
         <h3 style={h3Style}>Disclosure labeling</h3>
         <p style={pStyle}>
-          Every AI-generated article on {PUBLICATION_NAME} carries a visible
-          &ldquo;AI-assisted&rdquo; label in the article header. We do not hide,
-          minimise, or mislead readers about the AI origin of content.
+          Content on {PUBLICATION_NAME} is produced with AI assistance and
+          reviewed by editors. We do not hide, minimise, or mislead readers
+          about the use of AI; this page and our About page explain our process.
         </p>
 
         <h3 style={h3Style}>Factual accuracy</h3>

@@ -32,6 +32,7 @@ import { AdSlot }             from '@/components/ads/AdSlot';
 import { NavigableTopicCard } from '@/components/NavigableTopicCard';
 import { AD_UNITS }           from '@/config/ad-units';
 import { discoverImageUrl, DISCOVER_IMAGE_WIDTH, DISCOVER_IMAGE_HEIGHT } from '@/lib/discover-image';
+import { formatAndNormalizeArticleText } from '@/lib/format-article-text';
 
 // ---------------------------------------------------------------------------
 // Route segment config
@@ -195,6 +196,7 @@ const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? (() => { try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname; } catch { return undefined; } })()
   : undefined;
 const authorName = process.env.AUTHOR_NAME ?? 'theNewslane Editorial';
+const defaultDateline = process.env.PUBLICATION_COUNTRY ?? 'United States';
 
 export async function generateMetadata(
   { params }: { params: { slug: string } },
@@ -283,6 +285,11 @@ export default async function ArticlePage({
     (typeof sb?.meta_description === 'string' && sb.meta_description.trim()) ||
     (typeof sb?.seo_title === 'string' && sb.seo_title.trim()) ||
     null;
+  // Dateline: city and/or country before article (schema_blocks.dateline or .location or default)
+  const dateline =
+    (typeof sb?.dateline === 'string' && sb.dateline.trim()) ||
+    (typeof sb?.location === 'string' && sb.location.trim()) ||
+    defaultDateline;
 
   // Body paragraphs (split on double newline); fallback to single paragraph if article is one line
   const rawArticle = (topic.article && topic.article.trim()) || '';
@@ -342,7 +349,7 @@ export default async function ArticlePage({
           padding:   'var(--spacing-4) var(--spacing-4) var(--spacing-16)',
         }}
       >
-        {/* ── Breadcrumb (clickable) ── */}
+        {/* ── Breadcrumb (Home › Category only; no slug/title) ── */}
         <nav
           aria-label="Breadcrumb"
           style={{
@@ -377,8 +384,6 @@ export default async function ArticlePage({
               </Link>
             </>
           ) : null}
-          <span style={{ color: 'var(--color-text-muted-light)', margin: '0 var(--spacing-2)' }} aria-hidden>›</span>
-          <span style={{ color: 'var(--color-text-primary-light)' }}>{topic.title}</span>
         </nav>
 
         {/* ── Title ── */}
@@ -389,11 +394,26 @@ export default async function ArticlePage({
             fontWeight:   700,
             lineHeight:   1.2,
             color:        'var(--color-text-primary-light)',
-            margin:       '0 0 var(--spacing-4)',
+            margin:       '0 0 var(--spacing-2)',
           }}
         >
-          {topic.title}
+          {formatAndNormalizeArticleText(topic.title)}
         </h1>
+
+        {/* ── Dateline (country/city before article detail) ── */}
+        <p
+          style={{
+            fontFamily:  'var(--font-body)',
+            fontSize:    '13px',
+            fontWeight:  600,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color:       'var(--color-text-muted-light)',
+            margin:      '0 0 var(--spacing-4)',
+          }}
+        >
+          {formatAndNormalizeArticleText(dateline)}
+        </p>
 
         {/* ── Byline ── */}
         <div style={{ marginBottom: 'var(--spacing-6)' }}>
@@ -458,7 +478,7 @@ export default async function ArticlePage({
               borderLeft:  '3px solid var(--color-primary)',
             }}
           >
-            {displaySummary}
+            {formatAndNormalizeArticleText(displaySummary)}
           </p>
         )}
 
@@ -476,7 +496,7 @@ export default async function ArticlePage({
                     margin:     '0 0 var(--spacing-4)',
                   }}
                 >
-                  {para}
+                  {formatAndNormalizeArticleText(para)}
                 </p>
 
                 {/* Video embedded after 3rd paragraph (YouTube/Vimeo/Kling — embed-friendly, copyright-safe sources) */}

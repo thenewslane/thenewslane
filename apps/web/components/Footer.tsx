@@ -130,8 +130,7 @@ export function Footer() {
                 borderRadius:    'var(--radius-small)',
               }}
             >
-              Articles on this site are AI-assisted and reviewed for accuracy.
-              Content may not reflect the views of editors.
+              Articles are reviewed for accuracy. Content may not reflect the views of editors.
             </p>
           </div>
 

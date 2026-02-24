@@ -44,9 +44,9 @@ def _normalize_category(category: Any) -> str:
     return (category if isinstance(category, str) else str(category)).strip().lower()
 
 
-# Categories that often feature personalities (celebrities, politicians, leaders).
+# Categories that often feature personalities (celebrities, politicians, leaders, athletes).
 _PERSONALITY_CATEGORIES = frozenset({
-    "entertainment", "politics", "world news", "lifestyle",
+    "entertainment", "politics", "world news", "lifestyle", "sports",
 })
 # Categories that often feature products (launches, reviews).
 _PRODUCT_CATEGORIES = frozenset({
@@ -55,14 +55,16 @@ _PRODUCT_CATEGORIES = frozenset({
 # Nature, monuments, events — can mix personality + product + general.
 _NATURE_EVENT_CATEGORIES = frozenset({
     "environment", "science & health", "science", "health",
-    "sports", "education", "culture & arts", "culture", "arts",
+    "education", "culture & arts", "culture", "arts",
 })
 
 # Verbs that often follow a person's name in headlines.
 _PERSON_VERBS = re.compile(
     r"\b(says|announces|reveals|confirms|denies|responds|meets|visits|"
     r"launches|unveils|wins|backs|slams|criticizes|praises|apologizes|"
-    r"resigns|elected|appoints|interview|talks|speaks)\b",
+    r"resigns|elected|appoints|interview|talks|speaks|"
+    r"retires|steps|away|from|joins|signs|extends|leaves|returns|"
+    r"opens|closes|suspended|traded|drafted|injured)\b",
     re.I,
 )
 # Pattern: "Brand Name Product" or "Brand Product" (e.g. Apple iPhone 16).
@@ -77,22 +79,44 @@ def _derive_person_query(topic: Dict[str, Any]) -> Optional[str]:
     """
     Heuristic: derive a person-name query from title/summary for personality image.
     E.g. "Elon Musk announces Tesla deal" -> "Elon Musk".
+    E.g. "Kara Braxton retires from WNBA" -> "Kara Braxton".
+    E.g. "WNBA's Kara Braxton announces retirement" -> "Kara Braxton".
     """
     title = (topic.get("title") or "").strip()
     if not title:
         return None
+    # Pattern: "Possessive's Name" or "Org's Name" — extract Name (e.g. "WNBA's Kara Braxton" -> "Kara Braxton").
+    possessive_match = re.search(r"(?:^|\s)(?:[A-Za-z]+\'s\s+)?([A-Z][a-z]+\s+[A-Z][a-z]+)(?:\s+[a-z]|\s*[:—]|$)", title)
+    if possessive_match:
+        name = possessive_match.group(1).strip()
+        if 2 <= len(name.split()) <= 4:
+            return name
     # Look for "Name Verb ..." — take words before the verb.
     match = _PERSON_VERBS.search(title)
     if match:
         before = title[: match.start()].strip()
-        # First 2–5 words (likely the person name)
+        # Strip leading possessive (e.g. "WNBA's " or "The ")
+        before = re.sub(r"^(?:the\s+|[A-Za-z]+\'s\s+)", "", before, flags=re.I).strip()
         words = before.split()
         if 1 <= len(words) <= 6:
-            return " ".join(words[: min(4, len(words))])
-    # Fallback: first 3 words of title (often name in personality news).
+            candidate = " ".join(words[: min(4, len(words))])
+            # Drop trailing punctuation
+            candidate = re.sub(r"\s*[:—\-]\s*$", "", candidate).strip()
+            if len(candidate) >= 3:
+                return candidate
+    # Fallback: first 2–3 title words (often name); skip "The", "WNBA's", etc.
     words = title.split()
+    skip = 0
+    if words and words[0].lower() in ("the", "a", "an"):
+        skip = 1
+    if words and skip < len(words) and re.match(r"^[A-Za-z]+\'s$", words[skip]):
+        skip += 1
+    words = words[skip : skip + 4]
     if words:
-        return " ".join(words[: min(3, len(words))])
+        candidate = " ".join(words).strip()
+        candidate = re.sub(r"\s*[:—\-]\s*$", "", candidate).strip()
+        if len(candidate) >= 2:
+            return candidate
     return None
 
 
