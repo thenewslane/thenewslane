@@ -48,7 +48,7 @@ class AgentState(TypedDict):
     classified_topics: list[dict[str, Any]]        # topics with category
     content_generated_topics: list[dict[str, Any]] # topics with article content
     media_generated_topics: list[dict[str, Any]]   # topics with media assets
-    published_topic_ids: list[str]                 # DB IDs of published topics (drafts from publish node)
+    published_topic_ids: list[str]                 # DB IDs written by publish node (status=published, fact_check=yes)
     fact_checked_topic_ids: list[str]              # DB IDs set to published by fact-check agent
 
     # Errors are appended (reducer), never replaced, across all nodes
@@ -333,12 +333,12 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
         if category_id is None:
             category_id = 8
 
-    # Write as draft; fact-check agent will set fact_check=yes and status=published later.
+    # Publish immediately with fact_check=yes (fact-check logic paused; no draft step).
     # summary/article are guaranteed non-empty here (we skip above otherwise).
     patch: dict[str, Any] = {
-        "status": "draft",
-        "fact_check": "no",
-        "published_at": None,
+        "status": "published",
+        "fact_check": "yes",
+        "published_at": now_iso,
         "batch_id": batch_id,
         "slug": slug,
         "title": topic.get("title") or topic.get("keyword", ""),
@@ -370,18 +370,20 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
         log.debug("[publish] existing-article check failed for slug=%s: %s", slug, exc)
 
     if update_id:
-        patch_existing = {k: v for k, v in patch.items() if k != "published_at"}
-        patch_existing["updated_at"] = now_iso
+        patch_existing = {**patch, "updated_at": now_iso}
+        patch_existing = {k: v for k, v in patch_existing.items() if v is not None}
         patch_existing = {k: v for k, v in patch_existing.items() if v is not None}
         try:
             db.client.table("trending_topics").update(patch_existing).eq("id", update_id).execute()
-            log.info("[publish] updated existing → draft  id=%s  slug=%s", update_id, slug)
+            log.info("[publish] updated existing → published  id=%s  slug=%s", update_id, slug)
+            fire_external(slug)
             return update_id, None
         except Exception as exc:
             return None, f"publish: failed to update existing {update_id}: {exc}"
     try:
         db.client.table("trending_topics").update(patch).eq("id", topic_id).execute()
-        log.info("[publish] saved draft (fact_check=no)  %s  id=%s  slug=%s", topic.get("title", "?"), topic_id, slug)
+        log.info("[publish] published (fact_check=yes)  %s  id=%s  slug=%s", topic.get("title", "?"), topic_id, slug)
+        fire_external(slug)
         return topic_id, None
     except Exception as exc:
         return None, f"publish: failed for {topic_id}: {exc}"

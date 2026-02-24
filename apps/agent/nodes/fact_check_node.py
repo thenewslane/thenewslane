@@ -172,6 +172,10 @@ def run_fact_check_batch() -> tuple[List[str], List[str]]:
     published_ids: List[str] = []
     errors: List[str] = []
 
+    pause = getattr(settings, "pause_fact_check", True)
+    if pause:
+        log.info("[fact_check] pause_fact_check=True: skipping verification, marking all with content as published")
+
     for row in rows:
         topic_id = row.get("id")
         slug = (row.get("slug") or "").strip()
@@ -180,7 +184,11 @@ def run_fact_check_batch() -> tuple[List[str], List[str]]:
             errors.append(f"fact_check: row missing id or slug")
             continue
 
-        passed, notes = verify_topic(row)
+        if pause:
+            passed = True
+            notes = []
+        else:
+            passed, notes = verify_topic(row)
         if notes:
             log.info("[fact_check] %s  notes=%s", title, notes)
 

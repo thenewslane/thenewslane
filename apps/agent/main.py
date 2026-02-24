@@ -95,7 +95,7 @@ def run_pipeline(batch_id: str | None = None) -> dict:
         print("Pipeline running: collect → predict_viral → filter → classify → generate_content → source_video → generate_media → publish", flush=True)
         final_state = pipeline.invoke(initial_state)
 
-        published = len(final_state.get("published_topic_ids", []))
+        published = len(final_state.get("published_topic_ids", [])) + len(final_state.get("fact_checked_topic_ids", []))
         errors    = final_state.get("errors", [])
         status    = "partial" if errors else "completed"
         elapsed   = round(time.time() - initial_state["run_start_time"], 1)
@@ -124,8 +124,8 @@ def run_pipeline(batch_id: str | None = None) -> dict:
 
     raw_count       = len(final_state.get("raw_topics", []))
     processed_count = len(final_state.get("viral_scored_topics", []))
-    # Topics actually published to site (after fact-check); drafts count as published_topic_ids
-    published_count = len(final_state.get("fact_checked_topic_ids", []))
+    # Topics published this run: from publish node (direct) + any legacy drafts approved by fact_check
+    published_count = len(final_state.get("published_topic_ids", [])) + len(final_state.get("fact_checked_topic_ids", []))
     rejected_count  = max(0, processed_count - published_count)
 
     from utils.supabase_client import db as _db2  # noqa: PLC0415
@@ -264,7 +264,7 @@ def main() -> None:
     try:
         final_state = run_pipeline(batch_id)
 
-        published = len(final_state.get("published_topic_ids", []))
+        published = len(final_state.get("published_topic_ids", [])) + len(final_state.get("fact_checked_topic_ids", []))
         errors    = final_state.get("errors", [])
         elapsed   = round(time.time() - final_state.get("run_start_time", time.time()), 1)
 

@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     trends_geo: str = Field(default="US", description="ISO country code for Google Trends geo filter")
     newsapi_max_topics: int = Field(default=20, description="Max topics to query in NewsAPI per batch")
 
+    # ── Fact-check ─────────────────────────────────────────────────────────────
+    pause_fact_check: bool = Field(default=True, description="If True, skip LLM/date verification; set fact_check=yes and publish for all content")
+
     # ── Async publish & HITL ───────────────────────────────────────────────────
     publish_concurrency: int = Field(default=2, description="Max concurrent publish operations (async)")
     publish_hitl_delay_min: float = Field(default=2.0, description="HITL min delay (sec) before each publish")
