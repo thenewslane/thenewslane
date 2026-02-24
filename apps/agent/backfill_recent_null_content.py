@@ -1,11 +1,12 @@
 """
-backfill_recent_null_content.py — Backfill NULL summary/article for recent topics.
+backfill_recent_null_content.py — Backfill NULL summary/article for recent or all topics.
 
 Use case:
-  Some rows created recently may have NULL summary/article (e.g. due to a pipeline
-  transient error). This script finds rows from the last N hours and fills:
-    - summary (TEXT)
-    - article (TEXT)
+  Rows with NULL/empty summary or article should be filled before fact-check runs.
+  Fact-check runs only on rows where both summary and article are populated.
+
+  - Use --all to update all rows where summary or article is null/empty (scans up to --limit).
+  - Use --id 759bc8 to fix a specific topic by id (prefix match).
 
 Strategy:
   - If summary is NULL: try schema_blocks.meta_description or schema_blocks.seo_title
@@ -110,61 +111,82 @@ Rules:
     return summary_out, article_out
 
 
-def build_plan(hours: float, *, limit: int, use_llm: bool) -> list[BackfillPlan]:
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-    # Fetch a bounded set and filter in Python (simpler than OR filters)
-    res = (
+def _row_needs_backfill(r: dict[str, Any]) -> tuple[bool, bool]:
+    summary = r.get("summary")
+    article = r.get("article")
+    summary_missing = summary is None or (isinstance(summary, str) and not summary.strip())
+    article_missing = article is None or (isinstance(article, str) and not article.strip())
+    return summary_missing, article_missing
+
+
+def _plan_for_row(r: dict[str, Any], use_llm: bool) -> BackfillPlan | None:
+    topic_id = str(r.get("id") or "")
+    slug = str(r.get("slug") or "").strip()
+    title = str(r.get("title") or "").strip()
+    if not topic_id or not slug or not title:
+        return None
+
+    summary_missing, article_missing = _row_needs_backfill(r)
+    if not summary_missing and not article_missing:
+        return None
+
+    schema_blocks = r.get("schema_blocks")
+    set_summary: str | None = None
+    set_article: str | None = None
+
+    if summary_missing:
+        set_summary = _schema_fallback_summary(schema_blocks)
+
+    if use_llm and (article_missing or (summary_missing and not set_summary)):
+        regen_summary, regen_article = _regen_summary_and_article(title=title, schema_blocks=schema_blocks)
+        if summary_missing:
+            set_summary = set_summary or regen_summary
+        if article_missing:
+            set_article = regen_article
+
+    if set_summary is None and set_article is None:
+        return None
+
+    return BackfillPlan(
+        topic_id=topic_id,
+        slug=slug,
+        title=title,
+        set_summary=set_summary,
+        set_article=set_article,
+    )
+
+
+def build_plan(hours: float | None, *, limit: int, use_llm: bool, id_prefix: str | None = None) -> list[BackfillPlan]:
+    """
+    If id_prefix is set, fetch rows and filter to id containing that prefix (e.g. 759bc8).
+    If hours is None, do not filter by created_at (scan all within limit).
+    """
+    q = (
         db.client.table("trending_topics")
         .select("id, slug, title, summary, article, schema_blocks, created_at, status, fact_check")
-        .gte("created_at", cutoff)
-        .order("created_at", desc=False)
+        .order("created_at", desc=True)
         .limit(limit)
-        .execute()
     )
+    if hours is not None:
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        q = q.gte("created_at", cutoff)
+    res = q.execute()
     rows: list[dict[str, Any]] = res.data or []
+
+    if id_prefix:
+        id_prefix = id_prefix.strip().lower()
+        rows = [r for r in rows if id_prefix in str(r.get("id") or "").lower()]
+        if not rows:
+            return []
 
     plans: list[BackfillPlan] = []
     for r in rows:
-        topic_id = str(r.get("id") or "")
-        slug = str(r.get("slug") or "").strip()
-        title = str(r.get("title") or "").strip()
-        if not topic_id or not slug or not title:
-            continue
-
-        summary = r.get("summary")
-        article = r.get("article")
-        summary_missing = summary is None or (isinstance(summary, str) and not summary.strip())
-        article_missing = article is None or (isinstance(article, str) and not article.strip())
+        summary_missing, article_missing = _row_needs_backfill(r)
         if not summary_missing and not article_missing:
             continue
-
-        schema_blocks = r.get("schema_blocks")
-        set_summary: str | None = None
-        set_article: str | None = None
-
-        if summary_missing:
-            set_summary = _schema_fallback_summary(schema_blocks)
-
-        if use_llm and (article_missing or (summary_missing and not set_summary)):
-            regen_summary, regen_article = _regen_summary_and_article(title=title, schema_blocks=schema_blocks)
-            if summary_missing:
-                set_summary = set_summary or regen_summary
-            if article_missing:
-                set_article = regen_article
-
-        if set_summary is None and set_article is None:
-            continue
-
-        plans.append(
-            BackfillPlan(
-                topic_id=topic_id,
-                slug=slug,
-                title=title,
-                set_summary=set_summary,
-                set_article=set_article,
-            )
-        )
-
+        plan = _plan_for_row(r, use_llm)
+        if plan:
+            plans.append(plan)
     return plans
 
 
@@ -195,9 +217,11 @@ def apply_plan(plans: list[BackfillPlan], *, dry_run: bool) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--hours", type=float, default=5.0, help="Lookback window (default: 5 hours)")
+    ap.add_argument("--hours", type=float, default=5.0, help="Lookback window (default: 5 hours). Ignored if --all or --id.")
+    ap.add_argument("--all", action="store_true", help="Scan all topics (no time filter); fix any with null/empty summary or article.")
+    ap.add_argument("--id", dest="id_prefix", metavar="ID", help="Backfill only topic whose id contains this (e.g. 759bc8).")
     ap.add_argument("--dry-run", action="store_true", help="Print changes without updating DB")
-    ap.add_argument("--limit", type=int, default=250, help="Max rows to scan (default: 250)")
+    ap.add_argument("--limit", type=int, default=250, help="Max rows to scan (default: 250). Use 2000+ for --all.")
     ap.add_argument(
         "--use-llm",
         action="store_true",
@@ -205,9 +229,25 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    print(f"Finding rows with NULL summary/article since last {args.hours}h…")
     use_llm = args.use_llm if args.dry_run else True
-    plans = build_plan(args.hours, limit=args.limit, use_llm=use_llm)
+    hours: float | None = args.hours
+    id_prefix: str | None = getattr(args, "id_prefix", None)
+    if args.all:
+        hours = None
+    limit = args.limit
+    if id_prefix:
+        hours = 99999.0  # large window so we fetch enough rows to find the id
+        limit = max(limit, 2000)
+        print(f"Finding topic with id containing '{id_prefix}' and backfilling if empty…")
+    elif args.all:
+        limit = max(limit, 5000)  # default to scanning many rows when updating "all" nulls
+        print("Finding all rows with NULL/empty summary or article…")
+    else:
+        print(f"Finding rows with NULL summary/article since last {args.hours}h…")
+
+    plans = build_plan(hours, limit=limit, use_llm=use_llm, id_prefix=id_prefix)
+    if id_prefix and not plans:
+        print(f"No topic found with id containing '{id_prefix}', or topic already has summary and article.")
     apply_plan(plans, dry_run=args.dry_run)
 
 

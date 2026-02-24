@@ -149,6 +149,25 @@ def run_fact_check_batch() -> tuple[List[str], List[str]]:
         log.debug("[fact_check] no rows with fact_check=no")
         return [], []
 
+    # Only fact-check rows that have both summary and article populated.
+    # Rows with null/empty content stay fact_check=no until backfilled.
+    def _has_content(row: Dict[str, Any]) -> bool:
+        s = row.get("summary")
+        a = row.get("article")
+        return (
+            s is not None and isinstance(s, str) and bool(s.strip())
+            and a is not None and isinstance(a, str) and bool(a.strip())
+        )
+
+    skipped = [r for r in rows if not _has_content(r)]
+    rows = [r for r in rows if _has_content(r)]
+    for r in skipped:
+        log.debug("[fact_check] skip id=%s slug=%s (summary/article not populated)", r.get("id"), r.get("slug") or "?")
+
+    if not rows:
+        log.debug("[fact_check] no rows with fact_check=no and content populated")
+        return [], []
+
     now_iso = datetime.now(timezone.utc).isoformat()
     published_ids: List[str] = []
     errors: List[str] = []
