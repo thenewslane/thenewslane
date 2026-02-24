@@ -186,9 +186,12 @@ CREATE TABLE public.trending_topics (
                                  'predicting',
                                  'brand_checking',
                                  'generating',
+                                 'draft',
                                  'published',
                                  'rejected'
                                )),
+  fact_check       TEXT        NOT NULL DEFAULT 'no'
+                               CHECK (fact_check IN ('yes', 'no')),  -- set to 'yes' after fact-check agent
   rejection_reason TEXT,
   published_at     TIMESTAMPTZ,
 

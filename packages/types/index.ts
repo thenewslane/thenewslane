@@ -61,6 +61,7 @@ export type TopicStatus =
   | 'predicting'
   | 'brand_checking'
   | 'generating'
+  | 'draft'
   | 'published'
   | 'rejected';
 
@@ -107,6 +108,7 @@ export interface TrendingTopic {
 
   // Lifecycle
   status:           TopicStatus;
+  fact_check:       'yes' | 'no';   // set to 'yes' after fact-check agent verification
   rejection_reason: string | null;
   published_at:     ISODate | null;
 
