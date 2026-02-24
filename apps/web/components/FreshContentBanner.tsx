@@ -67,7 +67,8 @@ export function FreshContentBanner({ latestPublishedAt, onRefresh }: FreshConten
         let query = supabase
           .from('trending_topics')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'published');
+          .eq('status', 'published')
+          .eq('fact_check', 'yes');
 
         if (baselineRef.current) {
           query = query.gt('published_at', baselineRef.current);

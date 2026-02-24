@@ -57,17 +57,19 @@ async function getInitialData(): Promise<{
         .from('trending_topics')
         .select('*, category:categories(id, name, slug, color, description)')
         .eq('status', 'published')
+        .eq('fact_check', 'yes')
         .order('published_at', { ascending: false })
         .limit(12),
       supabase
         .from('categories')
         .select('*')
         .order('name', { ascending: true }),
-      // Only show categories that have at least one published topic
+      // Only show categories that have at least one published, fact-checked topic
       supabase
         .from('trending_topics')
         .select('category_id')
         .eq('status', 'published')
+        .eq('fact_check', 'yes')
         .not('category_id', 'is', null),
     ]);
 

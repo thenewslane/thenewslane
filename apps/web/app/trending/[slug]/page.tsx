@@ -48,6 +48,7 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
       .from('trending_topics')
       .select('slug')
       .eq('status', 'published')
+      .eq('fact_check', 'yes')
       .order('published_at', { ascending: false })
       .limit(30);
     return ((data ?? []) as { slug: string }[]).map(row => ({ slug: row.slug }));
@@ -67,6 +68,7 @@ async function getTopic(slug: string): Promise<TrendingTopic | null> {
     .select('*, category:categories(id, name, slug, color, description)')
     .eq('slug', slug)
     .eq('status', 'published')
+    .eq('fact_check', 'yes')
     .single();
   if (error || !data) return null;
   return data as TrendingTopic;
@@ -83,6 +85,7 @@ async function getRelatedTopics(topic: TrendingTopic): Promise<TrendingTopic[]> 
     .from('trending_topics')
     .select('*, category:categories(id, name, slug, color, description)')
     .eq('status', 'published')
+    .eq('fact_check', 'yes')
     .neq('id', excludeId)
     .order('published_at', { ascending: false })
     .limit(RELATED_COUNT);
@@ -103,6 +106,7 @@ async function getRelatedTopics(topic: TrendingTopic): Promise<TrendingTopic[]> 
       .from('trending_topics')
       .select('*, category:categories(id, name, slug, color, description)')
       .eq('status', 'published')
+      .eq('fact_check', 'yes')
       .order('published_at', { ascending: false })
       .limit(need + 10);
     const recentList = (recent ?? []) as TrendingTopic[];

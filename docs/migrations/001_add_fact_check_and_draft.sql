@@ -15,5 +15,5 @@ ALTER TABLE public.trending_topics
     'draft', 'published', 'rejected'
   ));
 
--- Optional: mark existing published rows as fact-checked so they stay visible
--- UPDATE public.trending_topics SET fact_check = 'yes' WHERE status = 'published';
+-- Backfill: mark existing published rows as fact-checked so they stay visible on the site
+UPDATE public.trending_topics SET fact_check = 'yes' WHERE status = 'published';

@@ -54,6 +54,7 @@ async function getCategoryPageData(slug: string): Promise<{
       .from('trending_topics')
       .select('*, category:categories(id, name, slug, color, description)')
       .eq('status', 'published')
+      .eq('fact_check', 'yes')
       .eq('category_id', category.id)
       .order('published_at', { ascending: false })
       .limit(PAGE_SIZE),
@@ -65,6 +66,7 @@ async function getCategoryPageData(slug: string): Promise<{
       .from('trending_topics')
       .select('category_id')
       .eq('status', 'published')
+      .eq('fact_check', 'yes')
       .not('category_id', 'is', null),
   ]);
 

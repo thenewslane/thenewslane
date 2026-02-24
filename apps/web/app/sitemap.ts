@@ -75,6 +75,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('trending_topics')
       .select('slug, published_at, viral_tier')
       .eq('status', 'published')
+      .eq('fact_check', 'yes')
       .not('published_at', 'is', null)
       .order('published_at', { ascending: false });
 

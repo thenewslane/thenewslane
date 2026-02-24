@@ -61,6 +61,7 @@ export function TopicFeed({ initialTopics, initialCategories, initialCategorySlu
         .from('trending_topics')
         .select('*, category:categories(id, name, slug, color, description)')
         .eq('status', 'published')
+        .eq('fact_check', 'yes')
         .order('published_at', { ascending: false })
         .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1);
 
