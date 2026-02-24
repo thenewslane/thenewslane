@@ -22,6 +22,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import Image             from 'next/image';
+import Link              from 'next/link';
 import { notFound }       from 'next/navigation';
 import { getServerClient } from '@platform/supabase';
 import type { TrendingTopic } from '@platform/types';
@@ -337,22 +338,44 @@ export default async function ArticlePage({
           padding:   'var(--spacing-4) var(--spacing-4) var(--spacing-16)',
         }}
       >
-        {/* ── Category breadcrumb ── */}
-        {topic.category && (
-          <p
+        {/* ── Breadcrumb (clickable) ── */}
+        <nav
+          aria-label="Breadcrumb"
+          style={{
+            margin:      '0 0 var(--spacing-3)',
+            fontSize:    '13px',
+            fontFamily:  'var(--font-body)',
+            fontWeight:  600,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+          }}
+        >
+          <Link
+            href="/"
             style={{
-              margin:      '0 0 var(--spacing-3)',
-              fontSize:    '13px',
-              fontFamily:  'var(--font-body)',
-              fontWeight:  600,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color:       `var(--color-category-${topic.category.slug})`,
+              color:           'var(--color-text-muted-light)',
+              textDecoration:  'none',
             }}
           >
-            {topic.category.name}
-          </p>
-        )}
+            Home
+          </Link>
+          {topic.category ? (
+            <>
+              <span style={{ color: 'var(--color-text-muted-light)', margin: '0 var(--spacing-2)' }} aria-hidden>›</span>
+              <Link
+                href={`/category/${topic.category.slug}`}
+                style={{
+                  color:           `var(--color-category-${topic.category.slug})`,
+                  textDecoration:  'none',
+                }}
+              >
+                {topic.category.name}
+              </Link>
+            </>
+          ) : null}
+          <span style={{ color: 'var(--color-text-muted-light)', margin: '0 var(--spacing-2)' }} aria-hidden>›</span>
+          <span style={{ color: 'var(--color-text-primary-light)' }}>{topic.title}</span>
+        </nav>
 
         {/* ── Title ── */}
         <h1
@@ -433,7 +456,7 @@ export default async function ArticlePage({
           </p>
         )}
 
-        {/* ── Article body — video injected after paragraph 1 ── */}
+        {/* ── Article body — video injected after 3rd paragraph ── */}
         {hasArticleBody ? (
           <div style={{ marginBottom: 'var(--spacing-6)' }}>
             {paragraphs.map((para, idx) => (
@@ -450,8 +473,8 @@ export default async function ArticlePage({
                   {para}
                 </p>
 
-                {/* Video player embedded after the 1st paragraph */}
-                {idx === 0 && hasVideo && (
+                {/* Video embedded after 3rd paragraph (YouTube/Vimeo/Kling — embed-friendly, copyright-safe sources) */}
+                {idx === 2 && hasVideo && (
                   <div style={{ margin: 'var(--spacing-6) 0', borderRadius: 'var(--radius-large)', overflow: 'hidden' }}>
                     <VideoPlayer
                       videoType={topic.video_type}
@@ -554,7 +577,7 @@ export default async function ArticlePage({
         </div>
       )}
 
-      {/* ── Related Topics ── */}
+      {/* ── Similar News: horizontal carousel, 5 cards at 50% width, reduced slug font ── */}
       {related.length > 0 && (
         <section
           style={{
@@ -572,17 +595,47 @@ export default async function ArticlePage({
               marginBottom: 'var(--spacing-4)',
             }}
           >
-            Related Topics
+            Similar News
           </h2>
           <div
             style={{
-              display:             'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))',
-              gap:                 'var(--spacing-4)',
+              display:        'flex',
+              flexDirection:  'row',
+              gap:            'var(--spacing-4)',
+              overflowX:      'auto',
+              overflowY:      'hidden',
+              paddingBottom:  'var(--spacing-2)',
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             {related.map(rel => (
-              <NavigableTopicCard key={rel.id} topic={rel} />
+              <div
+                key={rel.id}
+                style={{
+                  flex:           '0 0 50%',
+                  minWidth:       280,
+                  maxWidth:       400,
+                  display:        'flex',
+                  flexDirection:  'column',
+                  scrollSnapAlign: 'start',
+                }}
+              >
+                <NavigableTopicCard topic={rel} />
+                <span
+                  style={{
+                    marginTop:    'var(--spacing-1)',
+                    fontSize:     '11px',
+                    fontFamily:   'var(--font-body)',
+                    color:        'var(--color-text-muted-light)',
+                    overflow:     'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace:   'nowrap',
+                  }}
+                >
+                  /trending/{rel.slug}
+                </span>
+              </div>
             ))}
           </div>
         </section>
