@@ -6,6 +6,7 @@
  * Loads third-party scripts with the correct consent signals:
  *
  *  GA4  — only loaded when consent.analytics = true (GDPR gating)
+ *         Requires NEXT_PUBLIC_GA4_MEASUREMENT_ID (e.g. G-XXXXXXXXXX) in env.
  *  GPT  — ALWAYS loaded regardless of consent state (better fill rate)
  *         but with NPA(1) + restrictDataProcessing when consent is denied
  *         or the user has CCPA opted out.
@@ -16,6 +17,8 @@
  */
 
 import Script from 'next/script';
+import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 import type { ConsentState } from '@platform/ui/web';
 
 interface Props {
@@ -23,8 +26,28 @@ interface Props {
   isMinor: boolean;
 }
 
+/** Sends GA4 page_view on client-side route changes (Next.js SPA navigation). */
+function GA4RouteTracker({ ga4Id }: { ga4Id: string }) {
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!pathname || typeof window.gtag !== 'function') return;
+    window.gtag('event', 'page_view', {
+      page_path: pathname,
+      page_title: typeof document !== 'undefined' ? document.title : '',
+    });
+  }, [pathname, ga4Id]);
+  return null;
+}
+
+declare global {
+  interface Window {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 export function AnalyticsScripts({ consent, isMinor }: Props) {
-  const ga4Id = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
+  const ga4Id = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID ?? '';
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
   // CCPA opt-out and minor check must be evaluated client-side
@@ -35,6 +58,14 @@ export function AnalyticsScripts({ consent, isMinor }: Props) {
   // Non-personalised ads: no advertising consent, CCPA opt-out, or minor
   const useNpa = !consent.advertising || ccpaOptOut || isMinor;
 
+  const adGranted = consent.advertising && !ccpaOptOut && !isMinor;
+  const consentUpdate = {
+    ad_storage: adGranted ? 'granted' : 'denied',
+    ad_user_data: adGranted ? 'granted' : 'denied',
+    ad_personalization: adGranted ? 'granted' : 'denied',
+    analytics_storage: 'granted',
+  };
+
   return (
     <>
       {/* ── Google Analytics 4 — analytics consent required ─────────────── */}
@@ -44,29 +75,18 @@ export function AnalyticsScripts({ consent, isMinor }: Props) {
             id="ga4-loader"
             src={`https://www.googletagmanager.com/gtag/js?id=${ga4Id}`}
             strategy="afterInteractive"
-          />
-          <Script
-            id="ga4-init"
-            strategy="afterInteractive"
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{
-              __html: `
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){window.dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${ga4Id}', {
-                  anonymize_ip: true,
-                  cookie_flags: 'SameSite=None;Secure',
-                });
-                gtag('consent', 'update', {
-                  ad_storage:            '${consent.advertising && !ccpaOptOut && !isMinor ? 'granted' : 'denied'}',
-                  ad_user_data:          '${consent.advertising && !ccpaOptOut && !isMinor ? 'granted' : 'denied'}',
-                  ad_personalization:    '${consent.advertising && !ccpaOptOut && !isMinor ? 'granted' : 'denied'}',
-                  analytics_storage:     'granted',
-                });
-              `,
+            onLoad={() => {
+              window.dataLayer = window.dataLayer || [];
+              window.gtag = window.gtag || ((...args: unknown[]) => window.dataLayer?.push(args));
+              window.gtag('js', new Date());
+              window.gtag('config', ga4Id, {
+                anonymize_ip: true,
+                cookie_flags: 'SameSite=None;Secure',
+              });
+              window.gtag('consent', 'update', consentUpdate);
             }}
           />
+          <GA4RouteTracker ga4Id={ga4Id} />
         </>
       )}
 
