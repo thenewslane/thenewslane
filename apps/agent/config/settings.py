@@ -36,9 +36,12 @@ class Settings(BaseSettings):
     # ── AI / ML ───────────────────────────────────────────────────────────────
     groq_api_key: str = Field(default="", description="Groq API key (Llama Guard inference)")
     replicate_api_key: str = Field(default="", description="Replicate API key (Flux, Kling video)")
-    openai_api_key: str = Field(default="", description="OpenAI API key for DALL-E image generation")
+    together_api_key: str = Field(default="", description="Together.ai API key (Stable Diffusion/FLUX image generation)")
+    openai_api_key: str = Field(default="", description="OpenAI API key (optional; thumbnails use Together.ai, not OpenAI in batch)")
 
-    # ── Media ────────────────────────────────────────────────────────────────
+    # ── Media (copyright-free first; AI only when no applicable image) ─────────
+    unsplash_access_key: str = Field(default="", description="Unsplash API access key (free tier)")
+    pexels_api_key: str = Field(default="", description="Pexels API key (free)")
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs TTS key")
     elevenlabs_voice_id: str = Field(default="pNInz6obpgDQGcFmaJgB", description="ElevenLabs voice ID (default: Adam, neutral male news voice)")
 
@@ -73,6 +76,10 @@ class Settings(BaseSettings):
     media_concurrency: int = Field(default=2, description="Max concurrent image/media generations per batch")
     media_hitl_delay_min: float = Field(default=0.0, description="HITL min delay (sec) before starting each media task")
     media_hitl_delay_max: float = Field(default=2.0, description="HITL max delay (sec) before starting each media task")
+
+    # ── Thumbnail defaults ─────────────────────────────────────────────────────
+    thumbnail_min_width: int = Field(default=1200, description="Minimum thumbnail width in pixels")
+    default_logo_url: str = Field(default="", description="URL of theNewslane default logo (used when no image found)")
 
     @model_validator(mode="after")
     def _validate_required(self) -> "Settings":

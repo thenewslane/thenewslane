@@ -1,13 +1,14 @@
 """
 nodes/media_generation_node.py — Thumbnail and video generation.
 
-Thumbnail priority:
-  1. YouTube video thumbnail (free, if topic already has a YouTube embed)
-  2. Wikimedia Commons image search (free, CC-licensed)
-  3. OpenAI DALL-E 3 in Studio Ghibli style (AI fallback)
+Thumbnail priority (copyright-free first, min width 1200px; AI only when no image found):
+  1. YouTube thumbnail
+  2. Unsplash API, Pexels API, Pollination.ai (placeholders)
+  3. Wikimedia Commons, Wikipedia
+  4. Together.ai Stable Diffusion/FLUX (no OpenAI in batch)
+  5. Default theNewslane logo (when nothing found or credits expired)
 
-Video generation:
-  Kling AI via Replicate for ai_needed topics (skipped on Python 3.14).
+Video generation: Kling AI via Replicate for ai_needed topics.
 """
 
 from __future__ import annotations
@@ -38,6 +39,9 @@ POLL_INTERVAL   = 10
 MAX_WAIT_TIME   = 300
 
 USER_AGENT = "theNewslane/1.0 (news aggregator; contact@thenewslane.com)"
+
+# Minimum thumbnail width (pixels). Overridable via settings.thumbnail_min_width.
+THUMBNAIL_MIN_WIDTH = 1200
 
 # Minimum number of topic key terms that must appear in a Wikipedia result title/snippet.
 # Reduces wrong-person/wrong-story thumbnails (e.g. Biden image for a Finland/Sanna Marin story).
@@ -92,6 +96,7 @@ class StorageManager:
             ".jpeg": "image/jpeg",
             ".png":  "image/png",
             ".webp": "image/webp",
+            ".svg":  "image/svg+xml",
             ".mp4":  "video/mp4",
             ".webm": "video/webm",
         }.get(Path(path).suffix.lower(), "application/octet-stream")
@@ -104,11 +109,15 @@ class MediaGenerator:
     """
     Orchestrates thumbnail and video generation per topic.
 
-    Thumbnail priority
-    ------------------
-    1. YouTube thumbnail — free, if topic already has a YouTube embed
-    2. Wikimedia Commons — free CC-licensed image matching the topic title
-    3. OpenAI DALL-E 3  — Ghibli-style AI generation (fallback)
+    Thumbnail priority (copyright-free first; AI only when no applicable image):
+    1. YouTube thumbnail
+    2. Unsplash API (free, min width 1200px)
+    3. Pexels API (free, min width 1200px)
+    4. Pollination.ai (if configured)
+    5. Wikimedia Commons (free CC, min width 1200px)
+    6. Wikipedia page thumbnail
+    7. Together.ai Stable Diffusion / FLUX (AI fallback; no OpenAI in batch)
+    8. Default theNewslane logo (when nothing found or credits expired)
     """
 
     # Category-specific Ghibli environment hints for DALL-E
@@ -194,7 +203,86 @@ class MediaGenerator:
                 pass
         return None
 
-    # ── Thumbnail: step 2 — Wikipedia page thumbnail ─────────────────────────
+    # ── Thumbnail: Unsplash (copyright-free, min width 1200) ──────────────────
+
+    async def _unsplash_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
+        """Search Unsplash for a free photo; return URL with at least THUMBNAIL_MIN_WIDTH."""
+        key = getattr(settings, "unsplash_access_key", None) or ""
+        if not key:
+            return None
+        query = (topic.get("title") or topic.get("keyword") or "").strip()[:100]
+        if not query:
+            return None
+        try:
+            resp = await self.http_client.get(
+                "https://api.unsplash.com/search/photos",
+                params={"query": query, "per_page": 10, "orientation": "landscape"},
+                headers={"Authorization": f"Client-ID {key}"},
+                timeout=10.0,
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            for photo in (data.get("results") or [])[:10]:
+                w = int(photo.get("width") or 0)
+                h = int(photo.get("height") or 0)
+                if w < THUMBNAIL_MIN_WIDTH:
+                    continue
+                urls = photo.get("urls") or {}
+                raw = (urls.get("raw") or urls.get("full") or "").split("?")[0]
+                if not raw:
+                    continue
+                min_w = getattr(settings, "thumbnail_min_width", None) or THUMBNAIL_MIN_WIDTH
+                url = f"{raw}?w={min_w}&fit=crop"
+                log.info("Unsplash image for '%s': %s", query[:40], url[:60])
+                return url
+            return None
+        except Exception as exc:
+            log.debug("Unsplash search failed for '%s': %s", query[:40], exc)
+            return None
+
+    # ── Thumbnail: Pexels (copyright-free, min width 1200) ────────────────────
+
+    async def _pexels_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
+        """Search Pexels for a free photo; return URL with at least THUMBNAIL_MIN_WIDTH."""
+        key = getattr(settings, "pexels_api_key", None) or ""
+        if not key:
+            return None
+        query = (topic.get("title") or topic.get("keyword") or "").strip()[:100]
+        if not query:
+            return None
+        try:
+            resp = await self.http_client.get(
+                "https://api.pexels.com/v1/search",
+                params={"query": query, "per_page": 10, "orientation": "landscape"},
+                headers={"Authorization": key},
+                timeout=10.0,
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            min_w = getattr(settings, "thumbnail_min_width", None) or THUMBNAIL_MIN_WIDTH
+            for photo in (data.get("photos") or [])[:10]:
+                w = int(photo.get("width") or 0)
+                if w < min_w:
+                    continue
+                src = (photo.get("src") or {})
+                url = src.get("original") or src.get("large2x") or src.get("large")
+                if url:
+                    log.info("Pexels image for '%s': %s", query[:40], url[:60])
+                    return url
+            return None
+        except Exception as exc:
+            log.debug("Pexels search failed for '%s': %s", query[:40], exc)
+            return None
+
+    # ── Thumbnail: Pollination.ai (placeholder; add API when available) ───────
+
+    async def _pollination_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
+        """Placeholder for Pollination.ai image API. Returns None until configured."""
+        return None
+
+    # ── Thumbnail: Wikipedia page thumbnail ───────────────────────────────────
 
     async def _wikipedia_thumbnail_url(self, topic: Dict[str, Any]) -> Optional[str]:
         """
@@ -267,10 +355,12 @@ class MediaGenerator:
             if not thumb:
                 return None
 
-            # Upgrade to a larger resolution
+            # Request at least THUMBNAIL_MIN_WIDTH
             for small, large in [
-                ("/200px-", "/1200px-"), ("/320px-", "/1200px-"),
-                ("/400px-", "/1200px-"), ("/640px-", "/1200px-"),
+                ("/200px-", f"/{THUMBNAIL_MIN_WIDTH}px-"),
+                ("/320px-", f"/{THUMBNAIL_MIN_WIDTH}px-"),
+                ("/400px-", f"/{THUMBNAIL_MIN_WIDTH}px-"),
+                ("/640px-", f"/{THUMBNAIL_MIN_WIDTH}px-"),
             ]:
                 if small in thumb:
                     thumb = thumb.replace(small, large)
@@ -335,7 +425,8 @@ class MediaGenerator:
 
                 if mime not in ("image/jpeg", "image/png"):
                     continue
-                if width < 900 or height < 400:       # too small
+                min_w = getattr(settings, "thumbnail_min_width", None) or THUMBNAIL_MIN_WIDTH
+                if width < min_w or height < 400:
                     continue
                 if height > 0 and width / height < 1.2:  # must be landscape-ish
                     continue
@@ -357,9 +448,9 @@ class MediaGenerator:
             log.debug("Wikimedia search failed for '%s': %s", query, exc)
             return None
 
-    # ── Thumbnail: step 3 — DALL-E Ghibli ────────────────────────────────────
+    # ── Thumbnail: Together.ai Stable Diffusion / FLUX (AI fallback; no OpenAI in batch) ─
 
-    def _build_ghibli_prompt(self, topic: Dict[str, Any]) -> str:
+    def _build_image_prompt(self, topic: Dict[str, Any]) -> str:
         # image_prompt is stored inside schema_blocks
         scene    = (topic.get("image_prompt") or self._sb(topic, "image_prompt") or "").strip()
         title    = (topic.get("title")        or "").strip()
@@ -382,81 +473,100 @@ class MediaGenerator:
             "16:9 cinematic composition."
         )[:4000]
 
-    async def _dalle_thumbnail(self, topic: Dict[str, Any], topic_id: str) -> Optional[str]:
-        """Generate a Ghibli-style image via DALL-E 3 and return a Supabase URL."""
-        if not getattr(settings, "openai_api_key", None):
-            log.warning("OPENAI_API_KEY not configured — skipping DALL-E fallback")
+    async def _together_sd_thumbnail(self, topic: Dict[str, Any], topic_id: str) -> Optional[str]:
+        """Generate image via Together.ai (Stable Diffusion/FLUX). Only when no free image found."""
+        key = getattr(settings, "together_api_key", None) or ""
+        if not key:
+            log.warning("TOGETHER_API_KEY not configured — skipping AI image fallback")
             return None
-
-        prompt = self._build_ghibli_prompt(topic)
-        log.info("DALL-E 3 Ghibli fallback for topic %s", topic_id)
-
+        prompt = self._build_image_prompt(topic)
+        log.info("Together.ai image fallback for topic %s", topic_id)
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=90.0) as client:
                 resp = await client.post(
-                    "https://api.openai.com/v1/images/generations",
-                    headers={
-                        "Authorization": f"Bearer {settings.openai_api_key}",
-                        "Content-Type": "application/json",
-                    },
+                    "https://api.together.xyz/v1/images/generations",
                     json={
-                        "model":   "dall-e-3",
-                        "prompt":  prompt,
-                        "size":    "1792x1024",
-                        "quality": "hd",
-                        "n":       1,
+                        "model": "black-forest-labs/FLUX.1-schnell",
+                        "prompt": prompt[:4000],
+                        "n": 1,
+                        "width": max(getattr(settings, "thumbnail_min_width", None) or THUMBNAIL_MIN_WIDTH, 1024),
+                        "height": 576,
+                        "steps": 20,
+                        "response_format": "url",
                     },
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 )
                 if resp.status_code != 200:
-                    raise RuntimeError(f"OpenAI {resp.status_code}: {resp.text[:200]}")
-
-                image_url = resp.json()["data"][0]["url"]
-                img_data  = (await client.get(image_url)).content
-
-            tmp = f"/tmp/dalle_{topic_id}.png"
-            with open(tmp, "wb") as fh:
-                fh.write(img_data)
-
+                    log.warning("Together.ai API error: %s", resp.text[:200])
+                    return None
+                data = resp.json()
+                images = data.get("data") or []
+                if not images:
+                    return None
+                image_url = images[0].get("url")
+                if not image_url:
+                    return None
+                img_data = (await client.get(image_url)).content
+            tmp = f"/tmp/together_{topic_id}.png"
+            Path(tmp).write_bytes(img_data)
             url = await self.storage.upload_file(tmp, "thumbnails", f"{topic_id}.png")
             Path(tmp).unlink(missing_ok=True)
             return url
-
         except Exception as exc:
-            log.error("DALL-E generation failed for %s: %s", topic_id, exc)
+            log.error("Together.ai image generation failed for %s: %s", topic_id, exc)
             return None
+
+    async def _default_logo_url(self, topic_id: str) -> str:
+        """Return URL for default logo when no image found or permission/credits expired."""
+        url = getattr(settings, "default_logo_url", None) or ""
+        if url and str(url).strip():
+            return str(url).strip()
+        assets_dir = Path(__file__).resolve().parent.parent / "assets"
+        logo_path = assets_dir / "newslane-default-logo.svg"
+        if not logo_path.exists():
+            log.warning("Default logo not found at %s", logo_path)
+            return ""
+        try:
+            obj_name = "default-logo.svg"
+            file_data = logo_path.read_bytes()
+            self.storage.client.storage.from_("thumbnails").upload(
+                path=obj_name,
+                file=file_data,
+                file_options={"content-type": "image/svg+xml", "upsert": "true"},
+            )
+            return self.storage.client.storage.from_("thumbnails").get_public_url(obj_name)
+        except Exception as exc:
+            log.warning("Could not upload default logo: %s", exc)
+            return ""
 
     # ── Main thumbnail orchestrator ───────────────────────────────────────────
 
     async def generate_thumbnail(self, topic: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Resolve thumbnail via priority chain:
-          1. YouTube thumbnail    — free, instant, relevant (uses schema_blocks['video_id'])
-          2. Wikipedia            — free, no key, good news coverage
-          3. Wikimedia Commons    — free CC image search
-          4. DALL-E 3 Ghibli     — AI fallback (only if billing allows)
-
-        Wikipedia and Wikimedia URLs are stored directly (no Supabase re-host needed).
+        Copyright-free images first (min 1200px); AI only when none found.
+        Order: YouTube → Unsplash → Pexels → Pollination → Wikimedia → Wikipedia
+               → Together.ai (Stable Diffusion) → default theNewslane logo.
         """
         topic_id = topic.get("id") or f"topic_{uuid.uuid4().hex[:8]}"
 
-        # 1. YouTube — no quota consumed, URL is stable
-        yt_url = await self._youtube_thumbnail_url(topic)
-        if yt_url:
-            return {"thumbnail_url": yt_url}
+        for name, coro in [
+            ("YouTube", self._youtube_thumbnail_url(topic)),
+            ("Unsplash", self._unsplash_image_url(topic)),
+            ("Pexels", self._pexels_image_url(topic)),
+            ("Pollination", self._pollination_image_url(topic)),
+            ("Wikimedia", self._wikimedia_image_url(topic)),
+            ("Wikipedia", self._wikipedia_thumbnail_url(topic)),
+        ]:
+            url = await coro
+            if url:
+                return {"thumbnail_url": url}
 
-        # 2. Wikipedia page thumbnail (best for news topics)
-        wp_url = await self._wikipedia_thumbnail_url(topic)
-        if wp_url:
-            return {"thumbnail_url": wp_url}
+        sd_url = await self._together_sd_thumbnail(topic, topic_id)
+        if sd_url:
+            return {"thumbnail_url": sd_url}
 
-        # 3. Wikimedia Commons (broader CC image database)
-        wm_url = await self._wikimedia_image_url(topic)
-        if wm_url:
-            return {"thumbnail_url": wm_url}
-
-        # 4. DALL-E 3 Ghibli fallback
-        dalle_url = await self._dalle_thumbnail(topic, topic_id)
-        return {"thumbnail_url": dalle_url}
+        default_url = await self._default_logo_url(topic_id)
+        return {"thumbnail_url": default_url or None}
 
     # ── Video generation ──────────────────────────────────────────────────────
 
