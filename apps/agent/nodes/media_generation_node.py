@@ -864,9 +864,13 @@ async def generate_media_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, A
         return []
 
     concurrency = getattr(settings, "media_concurrency", 2)
-    hitl_min = getattr(settings, "media_hitl_delay_min", 0.0)
-    hitl_max = getattr(settings, "media_hitl_delay_max", 2.0)
-    log.info("generate_media_batch: %d topics (concurrency=%d, HITL=%.1f–%.1fs)", len(topics), concurrency, hitl_min, hitl_max)
+    hitl_initial = getattr(settings, "media_hitl_initial_delay_sec", 2.0)
+    hitl_min = getattr(settings, "media_hitl_delay_min", 1.0)
+    hitl_max = getattr(settings, "media_hitl_delay_max", 5.0)
+    log.info("generate_media_batch: %d topics (concurrency=%d, HITL initial=%.1fs, between=%.1f–%.1fs)", len(topics), concurrency, hitl_initial, hitl_min, hitl_max)
+    if hitl_initial > 0:
+        log.info("[media] HITL initial delay %.1fs before first task", hitl_initial)
+        await asyncio.sleep(hitl_initial)
     async with MediaGenerator() as gen:
         sem = asyncio.Semaphore(concurrency)
 

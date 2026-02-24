@@ -38,8 +38,9 @@ dependencies = [
     "ffmpeg-python>=0.2",
     "boto3>=1.35",          # S3-compatible Supabase Storage uploads
 
-    # ── Scheduling ───────────────────────────────────────────────────────
+    # ── Scheduling / Webhook ──────────────────────────────────────────────
     "inngest>=0.4",
+    "flask>=3.0",   # Inngest Flask serve + webhook_server (--webhook)
 
     # ── Settings / env ───────────────────────────────────────────────────
     "python-dotenv>=1.0",

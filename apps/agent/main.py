@@ -15,6 +15,9 @@ Run continuously every N minutes (built-in loop — no external dependencies):
 Run via Inngest (requires Inngest account + public URL):
     python main.py --inngest
 
+Run webhook server (for Vercel Cron / RUNNER_WEBHOOK_URL):
+    python main.py --webhook
+
 Override the interval (seconds) or batch ID:
     PIPELINE_INTERVAL_MINUTES=10 python main.py --schedule
     BATCH_ID=batch_test_001 python main.py
@@ -250,6 +253,12 @@ def main() -> None:
     if "--inngest" in args:
         # Inngest-managed CRON (requires Inngest account + public URL)
         _start_inngest()
+        return
+
+    if "--webhook" in args:
+        # HTTP server: POST /run triggers pipeline (for Vercel Cron → RUNNER_WEBHOOK_URL)
+        from webhook_server import serve  # noqa: PLC0415
+        serve()
         return
 
     # Direct single run — print immediately so user sees response

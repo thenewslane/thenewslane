@@ -10,16 +10,19 @@
  *
  * Env vars (Vercel):
  *   CRON_SECRET         — required; must match the bearer token from the cron
- *   RUNNER_WEBHOOK_URL  — optional; URL to POST to trigger the agent (e.g. Railway/Render)
+ *   RUNNER_WEBHOOK_URL  — optional; URL to POST to trigger the agent (e.g. https://your-runner/run)
+ *   RUNNER_WEBHOOK_SECRET — optional; if set, sent as Bearer token so the runner can validate (use same as agent RUNNER_WEBHOOK_SECRET)
  *
+ * Agent: run with `python main.py --webhook` and set RUNNER_WEBHOOK_SECRET in .env.
  * If RUNNER_WEBHOOK_URL is not set, the route still returns 200 (cron stays green)
- * but does not trigger any runner — run the agent separately (e.g. python main.py --schedule).
+ * but does not trigger any runner.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 const CRON_SECRET = process.env.CRON_SECRET ?? '';
 const RUNNER_WEBHOOK_URL = (process.env.RUNNER_WEBHOOK_URL ?? '').trim();
+const RUNNER_WEBHOOK_SECRET = (process.env.RUNNER_WEBHOOK_SECRET ?? process.env.CRON_SECRET ?? '').trim();
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -41,9 +44,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (RUNNER_WEBHOOK_SECRET) {
+      headers['Authorization'] = `Bearer ${RUNNER_WEBHOOK_SECRET}`;
+    }
     const res = await fetch(RUNNER_WEBHOOK_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ source: 'vercel-cron', at: new Date().toISOString() }),
       signal: AbortSignal.timeout(55_000),
     });

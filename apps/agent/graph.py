@@ -394,8 +394,12 @@ async def _publish_batch_async(topics: list[dict[str, Any]], batch_id: str) -> t
     from config.settings import settings  # noqa: PLC0415
 
     concurrency = getattr(settings, "publish_concurrency", 2)
-    hitl_min = getattr(settings, "publish_hitl_delay_min", 2.0)
-    hitl_max = getattr(settings, "publish_hitl_delay_max", 10.0)
+    hitl_initial = getattr(settings, "publish_hitl_initial_delay_sec", 5.0)
+    hitl_min = getattr(settings, "publish_hitl_delay_min", 3.0)
+    hitl_max = getattr(settings, "publish_hitl_delay_max", 15.0)
+    if hitl_initial > 0 and topics:
+        log.info("[publish] HITL initial delay %.1fs before first topic (human-review window)", hitl_initial)
+        await asyncio.sleep(hitl_initial)
     sem = asyncio.Semaphore(concurrency)
     published_ids: list[str] = []
     errors: list[str] = []

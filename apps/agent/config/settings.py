@@ -59,6 +59,7 @@ class Settings(BaseSettings):
 
     # ── Webhook / ISR ────────────────────────────────────────────────────────
     webhook_secret: str = Field(default="", description="Shared secret for /api/revalidate calls")
+    runner_webhook_secret: str = Field(default="", description="Secret for cron→runner POST; require Authorization: Bearer <this> (set same as CRON_SECRET)")
     revalidate_secret: str = Field(default="", description="ISR revalidation secret (= webhook_secret if not set)")
     slack_webhook_url: str = Field(default="", description="Slack incoming webhook URL for pipeline notifications")
 
@@ -74,11 +75,13 @@ class Settings(BaseSettings):
 
     # ── Async publish & HITL ───────────────────────────────────────────────────
     publish_concurrency: int = Field(default=2, description="Max concurrent publish operations (async)")
-    publish_hitl_delay_min: float = Field(default=2.0, description="HITL min delay (sec) before each publish")
-    publish_hitl_delay_max: float = Field(default=10.0, description="HITL max delay (sec) before each publish")
+    publish_hitl_initial_delay_sec: float = Field(default=5.0, description="HITL initial delay (sec) before first publish (human-review window)")
+    publish_hitl_delay_min: float = Field(default=3.0, description="HITL min delay (sec) between publish operations")
+    publish_hitl_delay_max: float = Field(default=15.0, description="HITL max delay (sec) between publish operations")
     media_concurrency: int = Field(default=2, description="Max concurrent image/media generations per batch")
-    media_hitl_delay_min: float = Field(default=0.0, description="HITL min delay (sec) before starting each media task")
-    media_hitl_delay_max: float = Field(default=2.0, description="HITL max delay (sec) before starting each media task")
+    media_hitl_initial_delay_sec: float = Field(default=2.0, description="HITL initial delay (sec) before first media task")
+    media_hitl_delay_min: float = Field(default=1.0, description="HITL min delay (sec) between media tasks")
+    media_hitl_delay_max: float = Field(default=5.0, description="HITL max delay (sec) between media tasks")
 
     # ── Thumbnail defaults ─────────────────────────────────────────────────────
     thumbnail_min_width: int = Field(default=1200, description="Minimum thumbnail width in pixels")
