@@ -28,6 +28,7 @@ except Exception:
     replicate = None  # type: ignore[assignment]
 
 from config.settings import settings
+from utils.image_selection import ImageIntent, get_image_strategy
 from utils.logger import get_logger
 from utils.supabase_client import db
 from utils.video_assembler import create_shorts_package
@@ -206,12 +207,14 @@ class MediaGenerator:
 
     # ── Thumbnail: Unsplash (copyright-free, min width 1200) ──────────────────
 
-    async def _unsplash_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
+    async def _unsplash_image_url(
+        self, topic: Dict[str, Any], query_override: Optional[str] = None
+    ) -> Optional[str]:
         """Search Unsplash for a free photo; return URL with at least THUMBNAIL_MIN_WIDTH."""
         key = getattr(settings, "unsplash_access_key", None) or ""
         if not key:
             return None
-        query = (topic.get("title") or topic.get("keyword") or "").strip()[:100]
+        query = (query_override or topic.get("title") or topic.get("keyword") or "").strip()[:100]
         if not query:
             return None
         try:
@@ -244,12 +247,14 @@ class MediaGenerator:
 
     # ── Thumbnail: Pexels (copyright-free, min width 1200) ────────────────────
 
-    async def _pexels_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
+    async def _pexels_image_url(
+        self, topic: Dict[str, Any], query_override: Optional[str] = None
+    ) -> Optional[str]:
         """Search Pexels for a free photo; return URL with at least THUMBNAIL_MIN_WIDTH."""
         key = getattr(settings, "pexels_api_key", None) or ""
         if not key:
             return None
-        query = (topic.get("title") or topic.get("keyword") or "").strip()[:100]
+        query = (query_override or topic.get("title") or topic.get("keyword") or "").strip()[:100]
         if not query:
             return None
         try:
@@ -279,13 +284,39 @@ class MediaGenerator:
 
     # ── Thumbnail: Pollination.ai (placeholder; add API when available) ───────
 
-    async def _pollination_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
+    async def _pollination_image_url(
+        self, topic: Dict[str, Any], query_override: Optional[str] = None
+    ) -> Optional[str]:
         """Placeholder for Pollination.ai image API. Returns None until configured."""
+        return None
+
+    # ── Thumbnail: OEM site (stub; product image from manufacturer site) ───────
+
+    async def _oem_site_image_url(
+        self, topic: Dict[str, Any], query: Optional[str] = None
+    ) -> Optional[str]:
+        """Product image from OEM/manufacturer site. Not implemented; returns None."""
+        return None
+
+    # ── Thumbnail: OEM / brand logo (copyright-free: Wikimedia, Wikipedia) ─────
+
+    async def _oem_logo_url(
+        self, topic: Dict[str, Any], query: str
+    ) -> Optional[str]:
+        """Try to find a copyright-free logo image (e.g. 'Apple logo') via Wikimedia/Wikipedia."""
+        if not (query or "").strip():
+            return None
+        for fetcher in (self._wikimedia_image_url, self._wikipedia_thumbnail_url):
+            url = await fetcher(topic, query_override=query)
+            if url:
+                return url
         return None
 
     # ── Thumbnail: Wikipedia page thumbnail ───────────────────────────────────
 
-    async def _wikipedia_thumbnail_url(self, topic: Dict[str, Any]) -> Optional[str]:
+    async def _wikipedia_thumbnail_url(
+        self, topic: Dict[str, Any], query_override: Optional[str] = None
+    ) -> Optional[str]:
         """
         Search Wikipedia for the article title and return its page thumbnail URL.
         Only uses a result if it passes a relevance check: at least
@@ -293,7 +324,7 @@ class MediaGenerator:
         page title/snippet to avoid wrong-person or wrong-story images (e.g.
         Biden thumbnail for a Finland/Sanna Marin article).
         """
-        query = (topic.get("title") or "").strip()
+        query = (query_override or topic.get("title") or "").strip()
         if not query:
             return None
 
@@ -379,13 +410,15 @@ class MediaGenerator:
 
     # ── Thumbnail: step 3 — Wikimedia Commons ────────────────────────────────
 
-    async def _wikimedia_image_url(self, topic: Dict[str, Any]) -> Optional[str]:
+    async def _wikimedia_image_url(
+        self, topic: Dict[str, Any], query_override: Optional[str] = None
+    ) -> Optional[str]:
         """
         Search Wikimedia Commons for a free CC-licensed image.
         Only returns an image if its filename/title contains at least one topic
         key term (relevance check to avoid wrong-person/wrong-story images).
         """
-        query = (topic.get("title") or "").strip()
+        query = (query_override or topic.get("title") or "").strip()
         if not query:
             return None
 
@@ -590,37 +623,57 @@ class MediaGenerator:
 
     # ── Main thumbnail orchestrator ───────────────────────────────────────────
 
+    async def _try_sources_with_query(
+        self, topic: Dict[str, Any], query: str
+    ) -> Optional[str]:
+        """Try Unsplash, Pexels, Pollination, Wikimedia, Wikipedia with given query. First hit wins."""
+        for fetcher in (
+            self._unsplash_image_url,
+            self._pexels_image_url,
+            self._pollination_image_url,
+            self._wikimedia_image_url,
+            self._wikipedia_thumbnail_url,
+        ):
+            url = await fetcher(topic, query_override=query)
+            if url:
+                return url
+        return None
+
     async def generate_thumbnail(self, topic: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Copyright-free images first (min 1200px); AI only when none found.
-        Order: YouTube → Unsplash → Pexels → Pollination → Wikimedia → Wikipedia
-               → Together.ai (Stable Diffusion) → default theNewslane logo.
-        External URLs (Unsplash, Pexels, Wikimedia, Wikipedia) are mirrored to
-        Supabase so article pages get stable thumbnail URLs.
+        Image selection by content type (personality, product, nature/events, other)
+        via utils.image_selection. Source order unchanged: YouTube → Unsplash → Pexels
+        → Pollination → Wikimedia → Wikipedia → Together.ai → default logo.
+        Personality: personality image → topic-related; avoid unsafe.
+        Product: OEM site (stub) → product copyright-free → similar → OEM logo.
+        Nature/monuments/events/other: combine above + source logic.
         """
         topic_id = topic.get("id") or f"topic_{uuid.uuid4().hex[:8]}"
 
-        for name, coro in [
-            ("YouTube", self._youtube_thumbnail_url(topic)),
-            ("Unsplash", self._unsplash_image_url(topic)),
-            ("Pexels", self._pexels_image_url(topic)),
-            ("Pollination", self._pollination_image_url(topic)),
-            ("Wikimedia", self._wikimedia_image_url(topic)),
-            ("Wikipedia", self._wikipedia_thumbnail_url(topic)),
-        ]:
-            url = await coro
+        # 1. YouTube once (no query)
+        url = await self._youtube_thumbnail_url(topic)
+        if url:
+            return {"thumbnail_url": url}
+
+        # 2. Strategy-driven steps (personality, product, topic, etc.)
+        steps = get_image_strategy(topic)
+        for step in steps:
+            if step.intent == ImageIntent.PRODUCT_OEM:
+                url = await self._oem_site_image_url(topic, step.search_query)
+            elif step.intent == ImageIntent.OEM_LOGO:
+                url = await self._oem_logo_url(topic, step.search_query)
+            else:
+                url = await self._try_sources_with_query(topic, step.search_query)
             if url:
-                # YouTube URLs are stable; mirror other externals to Supabase to avoid broken images
-                if name != "YouTube":
-                    supabase_url = await self._upload_external_thumbnail(url, topic_id)
-                    if supabase_url:
-                        url = supabase_url
+                supabase_url = await self._upload_external_thumbnail(url, topic_id)
+                if supabase_url:
+                    url = supabase_url
                 return {"thumbnail_url": url}
 
+        # 3. AI fallback then default logo
         sd_url = await self._together_sd_thumbnail(topic, topic_id)
         if sd_url:
             return {"thumbnail_url": sd_url}
-
         default_url = await self._default_logo_url(topic_id)
         return {"thumbnail_url": default_url or None}
 
