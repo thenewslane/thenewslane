@@ -8,6 +8,7 @@ ISR revalidation and IndexNow.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
@@ -42,15 +43,85 @@ def _fire_external(slug: str) -> None:
             log.warning("[fact_check] external call failed (%s): %s", url, exc)
 
 
+# Year in text: 19xx or 20xx
+_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+
+
+def _extract_years(text: str | None) -> List[int]:
+    if not text:
+        return []
+    return [int(m.group(0)) for m in _YEAR_RE.finditer(text)]
+
+
+def _llm_fact_check(title: str, summary: str, article_preview: str) -> tuple[bool, List[str]]:
+    """
+    Call Claude Haiku to cross-verify dates and factual claims.
+    Returns (passed, list of issues). Passed is False if LLM reports issues.
+    """
+    if not getattr(settings, "anthropic_api_key", None) or not settings.anthropic_api_key:
+        return True, []
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        prompt = f"""You are a fact-checker. Review this trending-news content for wrong dates, factual errors, or misleading claims.
+
+Title: {title[:200]}
+Summary: {summary[:500] if summary else "—"}
+Article (excerpt): {article_preview[:500] if article_preview else "—"}
+
+Current year is {datetime.now(timezone.utc).year}. If all dates and facts look correct, reply with exactly: OK
+If you find wrong years, outdated facts, or clear errors, reply with a short bullet list only (one line per issue)."""
+        msg = client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=200,
+            temperature=0.0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = (msg.content[0].text if msg.content else "").strip().upper()
+        if not text or text == "OK":
+            return True, []
+        issues = [line.strip() for line in text.split("\n") if line.strip() and "OK" not in line]
+        return False, [f"llm: {i}" for i in issues[:5]]
+    except Exception as exc:
+        log.warning("[fact_check] LLM check failed: %s", exc)
+        return True, []  # do not block on LLM failure
+
+
 def verify_topic(row: Dict[str, Any]) -> tuple[bool, List[str]]:
     """
     Run fact-check and date/data verification on a topic row.
     Returns (passed: bool, list of correction notes or errors).
 
-    Overridden in Steps 6–7 with date verification and LLM cross-check.
+    - Date check: reject if summary/article mention a year older than current_year - 1.
+    - LLM cross-check: Claude Haiku for factual/date consistency.
     """
-    # Stub: pass all for now
-    return True, []
+    notes: List[str] = []
+    current_year = datetime.now(timezone.utc).year
+    max_acceptable_year = current_year - 1  # e.g. 2024 when current is 2025
+
+    for field in ("summary", "article"):
+        text = row.get(field)
+        years = _extract_years(text)
+        for y in years:
+            if y < max_acceptable_year:
+                notes.append(f"date_outdated: year {y} in {field} (current {current_year})")
+            elif y > current_year:
+                notes.append(f"date_future: year {y} in {field}")
+
+    if any("date_outdated:" in n or "date_future:" in n for n in notes):
+        return False, notes
+
+    title = (row.get("title") or "")[:200]
+    summary = row.get("summary") or ""
+    article = row.get("article") or ""
+    article_preview = article[:600] if article else ""
+    llm_ok, llm_issues = _llm_fact_check(title, summary, article_preview)
+    if not llm_ok and llm_issues:
+        notes.extend(llm_issues)
+        return False, notes
+
+    return True, notes
 
 
 def run_fact_check_batch() -> tuple[List[str], List[str]]:
