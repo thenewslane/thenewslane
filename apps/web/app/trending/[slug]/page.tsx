@@ -205,6 +205,10 @@ export async function generateMetadata(
   const url        = `${baseUrl}/trending/${topic.slug}`;
   const imageUrl   = topic.thumbnail_url ?? undefined;
   const discoverOgImage = discoverImageUrl(imageUrl, supabaseHostname) ?? imageUrl;
+  // Ensure og:image is absolute (Google Discover requires absolute URL, min 1200×628)
+  const ogImageUrl = discoverOgImage
+    ? (discoverOgImage.startsWith('http') ? discoverOgImage : `${baseUrl}${discoverOgImage.startsWith('/') ? '' : '/'}${discoverOgImage}`)
+    : undefined;
   const sbMeta     = topic.schema_blocks as Record<string, unknown> | null;
   const description =
     (topic.summary && topic.summary.trim()) ||
@@ -218,18 +222,18 @@ export async function generateMetadata(
     description,
     alternates:  { canonical: url },
     openGraph: {
-      title:           topic.title,
+      title:             topic.title,
       description,
       url,
-      type:            'article',
-      publishedTime:   publishedAt,
-      modifiedTime:    topic.updated_at,
-      authors:         [authorName],
-      images:          discoverOgImage
-        ? [{ url: discoverOgImage, alt: topic.title, width: DISCOVER_IMAGE_WIDTH, height: DISCOVER_IMAGE_HEIGHT }]
+      type:              'article',
+      siteName:          pubName,
+      publishedTime:     publishedAt,
+      modifiedTime:      topic.updated_at,
+      authors:           [authorName],
+      images:            ogImageUrl
+        ? [{ url: ogImageUrl, alt: topic.title, width: DISCOVER_IMAGE_WIDTH, height: DISCOVER_IMAGE_HEIGHT }]
         : [],
-      tags:            topic.iab_tags ?? [],
-      siteName:        pubName,
+      tags:              topic.iab_tags ?? [],
     },
     twitter: {
       card:        'summary_large_image',
@@ -295,7 +299,8 @@ export default async function ArticlePage({
     (topic.video_type === 'vimeo_embed'   && !!embedId) ||
     (topic.video_type === 'kling_generated' && !!topic.video_url);
 
-  // ── JSON-LD: NewsArticle ────────────────────────────────────────────────
+  // ── JSON-LD: NewsArticle (required for Google Discover / rich results) ───
+  const authorPageUrl = `${baseUrl}/about`;
   const newsArticleSchema: Record<string, unknown> = {
     '@context':        'https://schema.org',
     '@type':           'NewsArticle',
@@ -304,11 +309,10 @@ export default async function ArticlePage({
     url:               articleUrl,
     datePublished:     publishedAt,
     dateModified:      topic.updated_at,
-    author: [{
-      '@type': 'Organization',
-      name:    pubName,
-      url:     baseUrl,
-    }],
+    author: [
+      { '@type': 'Person', name: authorName, url: authorPageUrl },
+      { '@type': 'Organization', name: pubName, url: baseUrl },
+    ],
     publisher: {
       '@type': 'Organization',
       name:    pubName,
@@ -416,7 +420,7 @@ export default async function ArticlePage({
           )}
         </div>
 
-        {/* ── Hero thumbnail — shown at top only when there is no video ── */}
+        {/* ── Hero thumbnail (LCP candidate): priority load, explicit size for CLS ── */}
         {!hasVideo && topic.thumbnail_url && (
           <div
             style={{
@@ -424,7 +428,9 @@ export default async function ArticlePage({
               marginBottom: 'var(--spacing-6)',
               borderRadius: 'var(--radius-large)',
               overflow:     'hidden',
+              width:        '100%',
               aspectRatio:  '16 / 9',
+              minHeight:    200,
             }}
           >
             <Image

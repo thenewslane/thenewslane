@@ -3,29 +3,34 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev":   "next dev",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint":  "next lint"
+    "lint": "next lint",
+    "lighthouse:ci": "node ../../scripts/run-lighthouse-ci.js",
+    "lighthouse:quick": "lhci autorun",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "next":              "14.2.29",
-    "react":             "^18",
-    "react-dom":         "^18",
-    "@platform/types":   "*",
-    "@platform/theme":   "*",
-    "@platform/ui":      "*",
-    "@platform/supabase":"*"
+    "next": "14.2.29",
+    "react": "^18",
+    "react-dom": "^18",
+    "@platform/types": "*",
+    "@platform/theme": "*",
+    "@platform/ui": "*",
+    "@platform/supabase": "*"
   },
   "devDependencies": {
-    "@types/node":      "^20",
-    "@types/react":     "^18",
+    "@lhci/cli": "^0.14.0",
+    "@next/bundle-analyzer": "^14.2.0",
+    "@types/node": "^20",
+    "@types/react": "^18",
     "@types/react-dom": "^18",
-    "typescript":       "^5",
-    "tailwindcss":      "^3",
-    "postcss":          "^8",
-    "autoprefixer":     "^10",
-    "eslint":           "^8",
-    "eslint-config-next":"14.2.29"
+    "typescript": "^5",
+    "tailwindcss": "^3",
+    "postcss": "^8",
+    "autoprefixer": "^10",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.29"
   }
 }

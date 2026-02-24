@@ -2,10 +2,10 @@
 /**
  * test-sitemap.js
  *
- * Fetches /sitemap.xml from the deployed site and reports:
- *   • Total number of URLs
- *   • Most recent <lastmod> date
- *   • Any article URLs that return HTTP 404
+ * Fetches the sitemap and reports:
+ *   • Total URLs
+ *   • Most recent article date
+ *   • Any URLs that return 404
  *
  * Usage:
  *   node scripts/test-sitemap.js [BASE_URL]
@@ -14,7 +14,7 @@
  *   node scripts/test-sitemap.js https://thenewslane.com
  *   node scripts/test-sitemap.js http://localhost:3000
  *
- * Exit code 0 = sitemap healthy; non-zero = issues detected.
+ * Exit code 0 = no 404s; non-zero = one or more URLs returned 404.
  */
 
 const https = require('https');
@@ -22,14 +22,10 @@ const http  = require('http');
 
 const BASE_URL = process.argv[2] || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function fetchUrl(url) {
+function fetch(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
-    client.get(url, { timeout: 20000 }, (res) => {
+    client.get(url, { timeout: 15000 }, (res) => {
       let body = '';
       res.on('data', (chunk) => (body += chunk));
       res.on('end', () => resolve({ status: res.statusCode, body }));
@@ -37,110 +33,75 @@ function fetchUrl(url) {
   });
 }
 
-function headUrl(url) {
+function head(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
-    const parsedUrl = new URL(url);
-    const options = {
-      hostname: parsedUrl.hostname,
-      port:     parsedUrl.port || (url.startsWith('https') ? 443 : 80),
-      path:     parsedUrl.pathname + parsedUrl.search,
-      method:   'HEAD',
-      timeout:  10000,
-    };
-    const req = client.request(options, (res) => {
-      resolve({ status: res.statusCode });
-    });
+    const u = new URL(url);
+    const opts = { hostname: u.hostname, path: u.pathname + u.search, method: 'HEAD', timeout: 10000 };
+    const req = client.request(opts, (res) => resolve(res.statusCode));
     req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
     req.end();
   });
 }
 
-const { URL } = require('url');
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
-
 async function main() {
-  console.log(`\nSitemap Validator — ${BASE_URL}\n${'─'.repeat(50)}`);
+  console.log(`\nSitemap Test — ${BASE_URL}\n${'─'.repeat(50)}`);
 
-  // Fetch sitemap
-  const sitemapUrl = `${BASE_URL}/sitemap.xml`;
-  let sitemapBody;
+  let body;
   try {
-    const { status, body } = await fetchUrl(sitemapUrl);
-    if (status !== 200) {
-      console.error(`❌  /sitemap.xml returned HTTP ${status}`);
+    const res = await fetch(`${BASE_URL}/sitemap.xml`);
+    if (res.status !== 200) {
+      console.error(`Failed to fetch sitemap: HTTP ${res.status}`);
       process.exit(1);
     }
-    sitemapBody = body;
-    console.log(`✅  Fetched sitemap (${Math.round(body.length / 1024)} KB)`);
+    body = res.body;
   } catch (e) {
-    console.error(`❌  Could not fetch sitemap: ${e.message}`);
+    console.error('Fetch sitemap error:', e.message);
     process.exit(1);
   }
 
-  // Parse <loc> and <lastmod>
-  const locMatches     = [...sitemapBody.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1].trim());
-  const lastmodMatches = [...sitemapBody.matchAll(/<lastmod>(.*?)<\/lastmod>/g)].map((m) => m[1].trim());
+  const urlMatches = [...body.matchAll(/<loc>([^<]+)<\/loc>/g)];
+  const urls = urlMatches.map((m) => m[1]);
+  const total = urls.length;
+  console.log(`Total URLs: ${total}`);
 
-  console.log(`\n📊  Total URLs in sitemap: ${locMatches.length}`);
-
-  // Most recent lastmod
-  if (lastmodMatches.length > 0) {
-    const sorted = [...lastmodMatches]
-      .filter(Boolean)
-      .map((d) => new Date(d))
-      .filter((d) => !isNaN(d.getTime()))
-      .sort((a, b) => b - a);
-    if (sorted.length > 0) {
-      console.log(`📅  Most recent lastmod:  ${sorted[0].toISOString()}`);
+  const articleDates = [];
+  const urlBlocks = body.split(/<url>/i);
+  for (const block of urlBlocks) {
+    const loc = block.match(/<loc>([^<]+)<\/loc>/);
+    const lastmod = block.match(/<lastmod>([^<]+)<\/lastmod>/);
+    if (loc && loc[1] && /\/trending\/[^/]+$/.test(loc[1])) {
+      articleDates.push({ url: loc[1], lastmod: lastmod ? lastmod[1] : '' });
     }
   }
-
-  // Check for 404s — sample up to 20 URLs to keep runtime reasonable
-  const articleUrls = locMatches.filter((u) => u.includes('/trending/'));
-  const checkSample = articleUrls.slice(0, 20);
-
-  if (checkSample.length === 0) {
-    console.log('\n⏭️   No /trending/ URLs to spot-check.');
+  if (articleDates.length > 0) {
+    const withDate = articleDates.filter((a) => a.lastmod);
+    const sorted = withDate.sort((a, b) => new Date(b.lastmod) - new Date(a.lastmod));
+    const mostRecent = sorted[0];
+    console.log(`Most recent article date: ${mostRecent.lastmod} (${mostRecent.url})`);
   } else {
-    console.log(`\n🔍  Spot-checking ${checkSample.length} article URL(s) for 404s…\n`);
-    const failures = [];
+    console.log('Most recent article date: (no article URLs in sitemap)');
+  }
 
-    await Promise.all(
-      checkSample.map(async (url) => {
-        try {
-          const { status } = await headUrl(url);
-          if (status === 404) {
-            failures.push({ url, status });
-            console.log(`   ❌  404 — ${url}`);
-          } else {
-            console.log(`   ✅  ${status} — ${url}`);
-          }
-        } catch (e) {
-          failures.push({ url, status: 'error', error: e.message });
-          console.log(`   ❌  ERROR — ${url} (${e.message})`);
-        }
-      }),
-    );
-
-    console.log(`\n${'─'.repeat(50)}`);
-    if (failures.length === 0) {
-      console.log(`✅  All ${checkSample.length} URLs returned non-404 responses.\n`);
-      process.exit(0);
-    } else {
-      console.log(`❌  ${failures.length} URL(s) returned 404 or errors:\n`);
-      failures.forEach(({ url, status, error }) =>
-        console.log(`   • ${url}  →  ${status}${error ? ` (${error})` : ''}`),
-      );
-      console.log('');
-      process.exit(1);
+  console.log('\nChecking for 404s...');
+  const notFounds = [];
+  for (const url of urls) {
+    try {
+      const status = await head(url);
+      if (status === 404) notFounds.push(url);
+    } catch {
+      notFounds.push(url);
     }
   }
 
+  if (notFounds.length > 0) {
+    console.log(`\n❌ URLs returning 404 (${notFounds.length}):`);
+    notFounds.forEach((u) => console.log(`   ${u}`));
+    console.log('');
+    process.exit(1);
+  }
+
+  console.log('✅ No 404s detected.\n');
   process.exit(0);
 }
 

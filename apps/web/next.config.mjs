@@ -1,5 +1,11 @@
 // @ts-check
 
+import bundleAnalyzer from '@next/bundle-analyzer';
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 // ---------------------------------------------------------------------------
 // Derive hostname from an environment URL — never hardcode project-specific IDs.
 // ---------------------------------------------------------------------------
@@ -63,8 +69,8 @@ const securityHeaders = [
       // Styles: Next.js injects inline <style> tags
       "style-src 'self' 'unsafe-inline'",
 
-      // Fonts: self-hosted + data URIs
-      "font-src 'self' data:",
+      // Fonts: self-hosted, data URIs, Google Fonts (layout uses Inter with display=swap)
+      "font-src 'self' data: https://fonts.gstatic.com",
 
       // Media: self-hosted + Supabase Storage (videos / audio)
       "media-src 'self' blob:" + (supabaseHostname ? ` https://${supabaseHostname}` : ''),
@@ -90,9 +96,10 @@ const nextConfig = {
   ],
 
   // ---------------------------------------------------------------------------
-  // Image optimisation — allowed remote patterns
+  // Image optimisation — WebP for smaller payloads, allowed remote patterns
   // ---------------------------------------------------------------------------
   images: {
+    formats: ['image/webp', 'image/avif'],
     remotePatterns: [
       // Supabase Storage — thumbnails, video posters, user avatars
       ...(supabaseHostname
@@ -141,4 +148,4 @@ const nextConfig = {
   // ---------------------------------------------------------------------------
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);
