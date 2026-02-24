@@ -93,10 +93,14 @@ Rules:
         messages=[{"role": "user", "content": prompt}],
     )
     text = (resp.content[0].text if resp.content else "").strip()
+    # Be robust: if Claude wraps JSON with extra text, extract the JSON object.
+    candidate = text
+    if "{" in text and "}" in text:
+        candidate = text[text.find("{") : text.rfind("}") + 1]
     try:
-        payload = json.loads(text)
+        payload = json.loads(candidate)
     except Exception:
-        log.warning("Claude returned non-JSON (%.120s...)", text)
+        log.warning("Claude returned non-JSON (%.180s...)", text)
         return None, None
 
     summary = payload.get("summary")
@@ -106,7 +110,7 @@ Rules:
     return summary_out, article_out
 
 
-def build_plan(hours: float) -> list[BackfillPlan]:
+def build_plan(hours: float, *, limit: int, use_llm: bool) -> list[BackfillPlan]:
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     # Fetch a bounded set and filter in Python (simpler than OR filters)
     res = (
@@ -114,7 +118,7 @@ def build_plan(hours: float) -> list[BackfillPlan]:
         .select("id, slug, title, summary, article, schema_blocks, created_at, status, fact_check")
         .gte("created_at", cutoff)
         .order("created_at", desc=False)
-        .limit(250)
+        .limit(limit)
         .execute()
     )
     rows: list[dict[str, Any]] = res.data or []
@@ -129,21 +133,23 @@ def build_plan(hours: float) -> list[BackfillPlan]:
 
         summary = r.get("summary")
         article = r.get("article")
-        if summary is not None and article is not None:
-            continue  # only backfill NULLs (not empty strings)
+        summary_missing = summary is None or (isinstance(summary, str) and not summary.strip())
+        article_missing = article is None or (isinstance(article, str) and not article.strip())
+        if not summary_missing and not article_missing:
+            continue
 
         schema_blocks = r.get("schema_blocks")
         set_summary: str | None = None
         set_article: str | None = None
 
-        if summary is None:
+        if summary_missing:
             set_summary = _schema_fallback_summary(schema_blocks)
 
-        if article is None or (summary is None and not set_summary):
+        if use_llm and (article_missing or (summary_missing and not set_summary)):
             regen_summary, regen_article = _regen_summary_and_article(title=title, schema_blocks=schema_blocks)
-            if summary is None:
+            if summary_missing:
                 set_summary = set_summary or regen_summary
-            if article is None:
+            if article_missing:
                 set_article = regen_article
 
         if set_summary is None and set_article is None:
@@ -191,10 +197,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--hours", type=float, default=5.0, help="Lookback window (default: 5 hours)")
     ap.add_argument("--dry-run", action="store_true", help="Print changes without updating DB")
+    ap.add_argument("--limit", type=int, default=250, help="Max rows to scan (default: 250)")
+    ap.add_argument(
+        "--use-llm",
+        action="store_true",
+        help="Use Claude to regenerate missing fields (slow). Defaults to off for --dry-run, on for live runs.",
+    )
     args = ap.parse_args()
 
     print(f"Finding rows with NULL summary/article since last {args.hours}h…")
-    plans = build_plan(args.hours)
+    use_llm = args.use_llm if args.dry_run else True
+    plans = build_plan(args.hours, limit=args.limit, use_llm=use_llm)
     apply_plan(plans, dry_run=args.dry_run)
 
 
