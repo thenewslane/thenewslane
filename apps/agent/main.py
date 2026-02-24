@@ -6,6 +6,9 @@ Usage
 Run one batch immediately (useful for testing):
     python main.py
 
+Run in debug mode (verbose logging, step-by-step output):
+    python main.py --debug
+
 Run continuously every N minutes (built-in loop — no external dependencies):
     python main.py --schedule
 
@@ -15,6 +18,17 @@ Run via Inngest (requires Inngest account + public URL):
 Override the interval (seconds) or batch ID:
     PIPELINE_INTERVAL_MINUTES=10 python main.py --schedule
     BATCH_ID=batch_test_001 python main.py
+
+Pipeline steps (in order)
+──────────────────────────
+  1. collect             — Fetch signals (Google Trends, NewsAPI, RSS, etc.)
+  2. predict_viral       — Score topics; keep only viral-scoring
+  3. filter_brand_safety — Brand-safety checks
+  4. classify            — Assign category (Technology, Sports, etc.)
+  5. generate_content   — Generate article, summary, social copy (Claude)
+  6. source_video        — Find YouTube/Vimeo or mark ai_needed
+  7. generate_media     — Thumbnails and optional AI video
+  8. publish             — Write to DB, trigger ISR + IndexNow
 """
 
 from __future__ import annotations
@@ -216,6 +230,15 @@ def _start_inngest() -> None:
 
 def main() -> None:
     args = sys.argv[1:]
+    debug = "--debug" in args
+    if debug:
+        args = [a for a in args if a != "--debug"]
+        # Ensure DEBUG-level logs are visible
+        import logging  # noqa: PLC0415
+        logging.getLogger("agent").setLevel(logging.DEBUG)
+        for h in logging.getLogger("agent").handlers:
+            h.setLevel(logging.DEBUG)
+        print("DEBUG MODE: verbose logging enabled, steps will be printed below.\n", flush=True)
 
     if "--schedule" in args:
         # Self-contained built-in loop — no external dependencies
@@ -230,6 +253,8 @@ def main() -> None:
     # Direct single run — print immediately so user sees response
     batch_id = os.environ.get("BATCH_ID")
     print("Starting theNewslane pipeline (single batch)...", flush=True)
+    if debug:
+        print("Steps: 1 collect → 2 predict_viral → 3 filter_brand_safety → 4 classify → 5 generate_content → 6 source_video → 7 generate_media → 8 publish", flush=True)
     if batch_id:
         print(f"  BATCH_ID={batch_id}", flush=True)
     print("  Log output will stream below. This may take several minutes.\n", flush=True)
@@ -252,7 +277,9 @@ def main() -> None:
                 print(f"    • {e[:140]}", flush=True)
         print(f"{'═' * 60}\n", flush=True)
 
-    except Exception:
+    except Exception as exc:
+        print(f"Pipeline failed: {exc}", flush=True)
+        traceback.print_exc()
         sys.exit(1)
 
 

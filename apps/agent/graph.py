@@ -349,16 +349,16 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
                         "video_url_portrait"):
                 if topic.get(key):
                     schema_blocks[key] = topic[key]
-        # One external source per article (for rel=nofollow attribution)
-        source_id = topic.get("source_id") or ""
-        if isinstance(source_id, str) and source_id.startswith("http"):
-            schema_blocks["source_url"] = source_id
-            if topic.get("source"):
-                schema_blocks["source_name"] = topic["source"]
-        # Persist brand_safe so the article page can disable ad slots for UNSAFE content
-        schema_blocks["brand_safe"] = topic.get("brand_safe", True)
+            # One external source per article (for rel=nofollow attribution)
+            source_id = topic.get("source_id") or ""
+            if isinstance(source_id, str) and source_id.startswith("http"):
+                schema_blocks["source_url"] = source_id
+                if topic.get("source"):
+                    schema_blocks["source_name"] = topic["source"]
+            # Persist brand_safe so the article page can disable ad slots for UNSAFE content
+            schema_blocks["brand_safe"] = topic.get("brand_safe", True)
 
-        # Convert iab_categories list → iab_tags TEXT[]
+            # Convert iab_categories list → iab_tags TEXT[]
             iab_tags: list[str] = topic.get("iab_categories") or []
 
             # Map category name to category_id for database
