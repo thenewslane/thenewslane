@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     trends_geo: str = Field(default="US", description="ISO country code for Google Trends geo filter")
     newsapi_max_topics: int = Field(default=20, description="Max topics to query in NewsAPI per batch")
 
+    # ── Async publish & HITL ───────────────────────────────────────────────────
+    publish_concurrency: int = Field(default=2, description="Max concurrent publish operations (async)")
+    publish_hitl_delay_min: float = Field(default=2.0, description="HITL min delay (sec) before each publish")
+    publish_hitl_delay_max: float = Field(default=10.0, description="HITL max delay (sec) before each publish")
+    media_concurrency: int = Field(default=2, description="Max concurrent image/media generations per batch")
+    media_hitl_delay_min: float = Field(default=0.0, description="HITL min delay (sec) before starting each media task")
+    media_hitl_delay_max: float = Field(default=2.0, description="HITL max delay (sec) before starting each media task")
+
     @model_validator(mode="after")
     def _validate_required(self) -> "Settings":
         missing: list[str] = []

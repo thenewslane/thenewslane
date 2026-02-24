@@ -13,6 +13,7 @@ Video generation:
 from __future__ import annotations
 
 import asyncio
+import random
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -643,15 +644,21 @@ async def generate_media_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, A
     if not topics:
         return []
 
-    log.info("generate_media_batch: %d topics", len(topics))
+    concurrency = getattr(settings, "media_concurrency", 2)
+    hitl_min = getattr(settings, "media_hitl_delay_min", 0.0)
+    hitl_max = getattr(settings, "media_hitl_delay_max", 2.0)
+    log.info("generate_media_batch: %d topics (concurrency=%d, HITL=%.1f–%.1fs)", len(topics), concurrency, hitl_min, hitl_max)
     async with MediaGenerator() as gen:
-        sem = asyncio.Semaphore(2)
+        sem = asyncio.Semaphore(concurrency)
 
-        async def _process(t: Dict[str, Any]) -> Dict[str, Any]:
+        async def _process(i: int, t: Dict[str, Any]) -> Dict[str, Any]:
+            if i > 0 and hitl_max > 0:
+                delay = random.uniform(hitl_min, hitl_max)
+                await asyncio.sleep(delay)
             async with sem:
                 return await gen.process_topic_media(t)
 
-        results = await asyncio.gather(*[_process(t) for t in topics], return_exceptions=True)
+        results = await asyncio.gather(*[_process(i, t) for i, t in enumerate(topics)], return_exceptions=True)
 
     processed: list[Dict[str, Any]] = []
     for i, r in enumerate(results):
