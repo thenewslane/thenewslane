@@ -250,20 +250,26 @@ function Dashboard({ onNavigate }: { onNavigate: (p: string) => void }) {
   useEffect(() => {
     const db = getSupabase();
     Promise.all([
-      db.from('trending_topics').select('id, status, viral_score'),
+      // Exact counts via HEAD requests — no row limit, no data transferred
+      db.from('trending_topics').select('*', { count: 'exact', head: true }),
+      db.from('trending_topics').select('*', { count: 'exact', head: true }).eq('status', 'published'),
+      db.from('trending_topics').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
+      // Avg viral score: fetch scores only, no 1000-row cap with range header
+      db.from('trending_topics').select('viral_score').not('viral_score', 'is', null),
+      // Recent topics and runs
       db.from('trending_topics').select('id, title, category_id, status, viral_score, created_at').order('created_at', { ascending: false }).limit(5),
       db.from('runs_log').select('*').order('created_at', { ascending: false }).limit(6),
-    ]).then(([statsRes, topicsRes, runsRes]) => {
-      if (statsRes.data) {
-        const all = statsRes.data;
-        const published = all.filter((t: any) => t.status === 'published').length;
-        const draft     = all.filter((t: any) => t.status === 'draft').length;
-        const scores    = all.map((t: any) => t.viral_score).filter(Boolean);
-        const avg       = scores.length
-          ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length * 10) / 10
-          : 0;
-        setStats({ total: all.length, published, draft, avgScore: avg });
-      }
+    ]).then(([totalRes, publishedRes, draftRes, scoresRes, topicsRes, runsRes]) => {
+      const scores = (scoresRes.data || []).map((t: any) => t.viral_score).filter(Boolean);
+      const avg    = scores.length
+        ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length * 10) / 10
+        : 0;
+      setStats({
+        total:     totalRes.count     ?? 0,
+        published: publishedRes.count ?? 0,
+        draft:     draftRes.count     ?? 0,
+        avgScore:  avg,
+      });
       if (topicsRes.data) setRecentTopics(topicsRes.data as Topic[]);
       if (runsRes.data)   setRecentRuns(runsRes.data as RunLog[]);
       setLoading(false);
