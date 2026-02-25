@@ -52,22 +52,82 @@ def _best_title(topic: RawTopic) -> str:
     return topic.keyword.title()
 
 
+# ── Keyword patterns that indicate a story's country of origin ─────────────────
+# Checked against the title/keyword content — takes priority over feed source
+# because the article content is the ground truth for where the story is about.
+_CONTENT_COUNTRY_PATTERNS: list[tuple[str, list[str]]] = [
+    ("IN", [
+        "india", "indian", "delhi", "mumbai", "bangalore", "bengaluru", "chennai",
+        "kolkata", "hyderabad", "pune", "ahmedabad", "jaipur", "lucknow",
+        "uttarakhand", "rajasthan", "maharashtra", "karnataka", "tamil nadu",
+        "kerala", "gujarat", "uttar pradesh", "madhya pradesh", "bihar",
+        "west bengal", "andhra pradesh", "telangana", "odisha", "assam",
+        "punjab", "haryana", "himachal", "jharkhand", "chhattisgarh", "goa",
+        "pocso", "lok sabha", "rajya sabha", "supreme court of india",
+        "bombay high court", "delhi high court", "niti aayog", "isro",
+        "modi", "bjp", "congress", "aap", "nda", "upa",
+        "rupee", "rupees", "crore", "lakh",
+    ]),
+    ("GB", [
+        "britain", "british", "uk", "london", "england", "scotland", "wales",
+        "manchester", "birmingham", "liverpool", "edinburgh", "glasgow",
+        "westminster", "downing street", "nhs", "bbc", "premier league",
+        "parliament", "house of commons", "house of lords",
+    ]),
+    ("AU", [
+        "australia", "australian", "sydney", "melbourne", "brisbane",
+        "perth", "adelaide", "canberra", "queensland", "victoria",
+        "new south wales", "tasmania",
+    ]),
+    ("DE", ["germany", "german", "berlin", "munich", "frankfurt", "bundesliga"]),
+    ("FR", ["france", "french", "paris", "macron", "lyon", "marseille"]),
+    ("JP", ["japan", "japanese", "tokyo", "osaka", "yen"]),
+    ("CN", ["china", "chinese", "beijing", "shanghai", "shenzhen"]),
+    ("KR", ["south korea", "korean", "seoul"]),
+    ("BR", ["brazil", "brazilian", "brasilia", "são paulo"]),
+    ("CA", ["canada", "canadian", "toronto", "ottawa", "vancouver"]),
+    ("SE", ["sweden", "swedish", "stockholm"]),
+    ("NO", ["norway", "norwegian", "oslo"]),
+]
+
+
 def _infer_source_country(topic: RawTopic) -> str:
     """
-    Infer ISO-2 country code from raw_rows engagement_data.
-    Returns "" when the origin cannot be determined.
+    Infer ISO-2 country code from the article's actual content first,
+    then fall back to extraction source metadata.
+
+    Priority order:
+      1. Content-based: scan keyword/title for country-specific proper nouns
+      2. RSS feed name mapping
+      3. NewsAPI country code (least reliable — reflects query country, not story origin)
     """
+    # 1. Content-based detection — checks what the story is actually ABOUT
+    text_to_scan = topic.keyword.lower()
+    for pr in topic.raw_rows:
+        title = (pr.get("title") or "").lower()
+        if len(title) > len(text_to_scan):
+            text_to_scan = title
+
+    for country_code, patterns in _CONTENT_COUNTRY_PATTERNS:
+        for pattern in patterns:
+            if pattern in text_to_scan:
+                return country_code
+
+    # 2. RSS feed name mapping (feed is editorially region-specific)
     for pr in topic.raw_rows:
         eng = pr.get("engagement_data") or {}
-        # NewsAPI supplies explicit country code
-        country = eng.get("country", "")
-        if country:
-            return str(country).upper()
-        # RSS feeds: use feed_name mapping
         for key in ("feed_name",):
             feed = eng.get(key) or (pr.get("raw_data") or {}).get(key, "")
             if feed in _FEED_COUNTRY:
                 return _FEED_COUNTRY[feed]
+
+    # 3. NewsAPI country code (last resort — this is the query country, not story origin)
+    for pr in topic.raw_rows:
+        eng = pr.get("engagement_data") or {}
+        country = eng.get("country", "")
+        if country:
+            return str(country).upper()
+
     return ""
 
 

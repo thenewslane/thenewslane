@@ -388,7 +388,7 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
             social_copy[k] = topic[v]
 
     schema_blocks: dict[str, Any] = {}
-    for key in ("seo_title", "meta_description", "faq", "headline_cluster", "embed_url", "channel_name", "video_id", "image_prompt", "video_url_portrait"):
+    for key in ("seo_title", "meta_description", "faq", "headline_cluster", "embed_url", "channel_name", "video_id", "image_prompt", "video_url_portrait", "dateline"):
         if topic.get(key):
             schema_blocks[key] = topic[key]
     source_id = topic.get("source_id") or ""

@@ -109,6 +109,7 @@ REQUIRED JSON STRUCTURE:
   "youtube_script": "string of approximately 80 words designed to be spoken aloud, punchy opening, key facts, strong close",
   "image_prompt": "string describing the specific real-world setting or environment from this news story (e.g. the actual location, landmark, type of environment, or scenario where this event is unfolding). Be concrete and news-accurate. No real people, faces, logos, or brand names. This scene will be rendered in Studio Ghibli animation style, so describe it as a place or environment, not as a person or action shot.",
   "iab_categories": ["2-3 strings from IAB Content Taxonomy v3"],
+  "dateline": "the country where this story takes place, derived from the article content (e.g. 'India', 'United Kingdom', 'Australia'). Use the full country name. If the story is US domestic, use 'United States'. If the location cannot be determined, use 'Global'.",
   "slug": "url-safe-lowercase-string-with-hyphens-derived-from-topic-title"
 }}
 
@@ -117,7 +118,9 @@ IMPORTANT:
 - All strings must be properly escaped for JSON
 - Follow exact word/character limits specified
 - Use factual, journalistic tone appropriate for the viral tier
-- Ensure slug is URL-safe (lowercase, hyphens, no special characters)"""
+- Ensure slug is URL-safe (lowercase, hyphens, no special characters)
+- The "dateline" must reflect where the story TAKES PLACE, based on its content — not where the news outlet is based
+- Keep well-known acronyms in ALL CAPS in titles and article text (e.g. POCSO, HC, SC, FIR, BJP, PIL, NASA, FBI, NHS)"""
 
     def _create_correction_prompt(self, topic: Dict[str, Any], errors: List[str], previous_content: Dict[str, Any]) -> str:
         """Create correction prompt for failed validation."""

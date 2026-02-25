@@ -401,21 +401,6 @@ export default async function ArticlePage({
           {formatAndNormalizeArticleText(topic.title)}
         </h1>
 
-        {/* ── Dateline (country/city before article detail) ── */}
-        <p
-          style={{
-            fontFamily:  'var(--font-body)',
-            fontSize:    '13px',
-            fontWeight:  600,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color:       'var(--color-text-muted-light)',
-            margin:      '0 0 var(--spacing-4)',
-          }}
-        >
-          {formatAndNormalizeArticleText(dateline)}
-        </p>
-
         {/* ── Byline ── */}
         <div style={{ marginBottom: 'var(--spacing-6)' }}>
           <AuthorByline
@@ -502,6 +487,17 @@ export default async function ArticlePage({
                     margin:     '0 0 var(--spacing-4)',
                   }}
                 >
+                  {idx === 0 && dateline && (
+                    <span
+                      style={{
+                        fontWeight:     700,
+                        textTransform:  'uppercase',
+                        letterSpacing:  '0.04em',
+                      }}
+                    >
+                      {formatAndNormalizeArticleText(dateline)}:{' '}
+                    </span>
+                  )}
                   {formatAndNormalizeArticleText(para)}
                 </p>
 

@@ -11,7 +11,15 @@ const ALL_CAPS_TERMS = new Set([
   // Sports / orgs
   'wnba', 'nba', 'nfl', 'nhl', 'mlb', 'mls', 'ncaa', 'espn', 'fbi', 'cia', 'ceo', 'cfo', 'cto',
   'ai', 'api', 'rss', 'faq', 'faqs', 'pdf', 'url', 'html', 'css', 'nyc', 'la', 'dc',
-  // Add more as needed
+  // Indian legal / government acronyms
+  'pocso', 'hc', 'sc', 'fir', 'pil', 'cbi', 'nia', 'ed', 'ipc', 'bns', 'crpc', 'bnss',
+  'bjp', 'inc', 'aap', 'rss', 'mla', 'mp', 'pm', 'cm',
+  'rti', 'ngt', 'sebi', 'rbi', 'isro', 'drdo', 'bcci',
+  // International government / institutions
+  'imf', 'wto', 'icc', 'icj', 'ecb', 'fed', 'sec', 'doj', 'nhs', 'gop',
+  'gdp', 'ipo', 'etf', 'nyse', 'ftse', 'cpi', 'gst', 'vat',
+  // Tech
+  'llm', 'gpu', 'cpu', 'ram', 'ssd', 'ios', 'usb', 'nft', 'dao', 'defi',
 ]);
 
 const ALL_CAPS_REGEX = (() => {
