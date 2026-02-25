@@ -52,7 +52,11 @@ log = get_logger(__name__)
 # ── Single batch ──────────────────────────────────────────────────────────────
 
 
-def run_pipeline(batch_id: str | None = None) -> dict:
+def run_pipeline(
+    batch_id: str | None = None,
+    category_filter: str | None = None,
+    max_topics: int | None = None,
+) -> dict:
     """
     Execute one full pipeline batch.
 
@@ -63,6 +67,14 @@ def run_pipeline(batch_id: str | None = None) -> dict:
       4. Finalise the runs_log row with stats
       5. Return the final state dict
 
+    Args:
+      batch_id:        Optional explicit batch ID (auto-generated if omitted).
+      category_filter: Optional category name to restrict output (e.g. "Technology").
+                       Applied after classify — only topics matching this category
+                       proceed to content generation.
+      max_topics:      Optional cap on topics entering generate_content (1-10).
+                       Applied after category filtering.
+
     Raises on unrecoverable errors (after marking the run as 'failed').
     """
     from graph import pipeline  # noqa: PLC0415
@@ -71,6 +83,8 @@ def run_pipeline(batch_id: str | None = None) -> dict:
 
     bid = batch_id or f"batch_{uuid.uuid4().hex[:12]}"
     log.info("═══ Pipeline batch starting  batch_id=%s ═══", bid)
+    if category_filter:
+        log.info("    category_filter=%s  max_topics=%s", category_filter, max_topics)
 
     try:
         db.insert_batch(bid)
@@ -83,6 +97,8 @@ def run_pipeline(batch_id: str | None = None) -> dict:
     initial_state: dict = {
         "batch_id":                 bid,
         "run_start_time":           time.time(),
+        "category_filter":          category_filter,
+        "max_topics":               max_topics,
         "raw_topics":               [],
         "viral_scored_topics":      [],
         "brand_safe_topics":        [],
@@ -263,15 +279,32 @@ def main() -> None:
 
     # Direct single run — print immediately so user sees response
     batch_id = os.environ.get("BATCH_ID")
+
+    # Parse optional --category=NAME and --max-topics=N flags
+    category_filter: str | None = None
+    max_topics: int | None = None
+    for arg in args:
+        if arg.startswith("--category="):
+            category_filter = arg.split("=", 1)[1].strip()
+        elif arg.startswith("--max-topics="):
+            try:
+                max_topics = max(1, min(10, int(arg.split("=", 1)[1])))
+            except ValueError:
+                pass
+
     print("Starting theNewslane pipeline (single batch)...", flush=True)
     if debug:
-        print("Steps: 1 collect → 2 predict_viral → 3 filter_brand_safety → 4 classify → 5 generate_content → 6 source_video → 7 generate_media → 8 publish", flush=True)
+        print("Steps: 1 collect → 2 predict_viral → 3 filter_brand_safety → 4 classify → 5 filter_category → 6 generate_content → 7 source_video → 8 generate_media → 9 publish", flush=True)
     if batch_id:
         print(f"  BATCH_ID={batch_id}", flush=True)
+    if category_filter:
+        print(f"  CATEGORY_FILTER={category_filter}", flush=True)
+    if max_topics:
+        print(f"  MAX_TOPICS={max_topics}", flush=True)
     print("  Log output will stream below. This may take several minutes.\n", flush=True)
 
     try:
-        final_state = run_pipeline(batch_id)
+        final_state = run_pipeline(batch_id, category_filter=category_filter, max_topics=max_topics)
 
         published = len(final_state.get("published_topic_ids", [])) + len(final_state.get("fact_checked_topic_ids", []))
         errors    = final_state.get("errors", [])
