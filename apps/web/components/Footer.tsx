@@ -13,6 +13,7 @@
 
 import Link                    from 'next/link';
 import { CookieSettingsButton } from './CookieSettingsButton';
+import { Logo }                from './Logo';
 
 const PUBLICATION_NAME   = process.env.PUBLICATION_NAME   ?? 'theNewslane';
 const AUTHOR_NAME        = process.env.AUTHOR_NAME        ?? '';
@@ -72,17 +73,7 @@ export function Footer() {
           {/* Brand column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
-              <span
-                aria-hidden
-                style={{
-                  width:           24,
-                  height:          24,
-                  borderRadius:    'var(--radius-small)',
-                  backgroundColor: 'var(--color-primary)',
-                  display:         'block',
-                  flexShrink:      0,
-                }}
-              />
+              <Logo size={24} />
               <span
                 style={{
                   fontFamily:  'var(--font-heading)',

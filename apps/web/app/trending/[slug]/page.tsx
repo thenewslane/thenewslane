@@ -28,6 +28,7 @@ import { getServerClient } from '@platform/supabase';
 import type { TrendingTopic } from '@platform/types';
 import { VideoPlayer, AuthorByline, SourceAttribution } from '@platform/ui/web';
 import { FaqAccordion }       from '@/components/FaqAccordion';
+import { ShareBar }           from '@/components/ShareBar';
 import { AdSlot }             from '@/components/ads/AdSlot';
 import { NavigableTopicCard } from '@/components/NavigableTopicCard';
 import { AD_UNITS }           from '@/config/ad-units';
@@ -440,6 +441,11 @@ export default async function ArticlePage({
           )}
         </div>
 
+        {/* ── Share bar ── */}
+        <div style={{ marginBottom: 'var(--spacing-6)' }}>
+          <ShareBar url={articleUrl} title={topic.title} />
+        </div>
+
         {/* ── Hero thumbnail (LCP candidate): priority load, explicit size for CLS ── */}
         {!hasVideo && topic.thumbnail_url && (
           <div
@@ -684,6 +690,9 @@ export default async function ArticlePage({
             borderTop:   '1px solid rgba(0,0,0,.08)',
           }}
         >
+          <div style={{ marginBottom: 'var(--spacing-6)' }}>
+            <ShareBar url={articleUrl} title={topic.title} />
+          </div>
           <SourceAttribution
             sourceName={(() => {
               const sb = topic.schema_blocks ?? {};

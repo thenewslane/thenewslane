@@ -12,19 +12,19 @@
 
 export const theme = {
   // ---------------------------------------------------------------------------
-  // Brand colours
+  // Brand colours — upmarket Gen Z palette
   // ---------------------------------------------------------------------------
-  primaryColor:   '#AD2D37', // theNewslane brand red
-  secondaryColor: '#1E3A5F', // deep navy
-  accentColor:    '#E05A1E', // warm orange — CTAs, highlights
-  linkColor:      '#2563EB', // accessible blue
+  primaryColor:   '#E8384F', // vibrant coral-red — bold, contemporary
+  secondaryColor: '#141422', // deep indigo-black — editorial depth
+  accentColor:    '#7C5CFC', // electric violet — Gen Z signature
+  linkColor:      '#3B82F6', // modern blue — accessible, clean
 
   // ---------------------------------------------------------------------------
   // Background — light and dark variants
   // ---------------------------------------------------------------------------
   backgroundColor: {
-    light: '#FFFFFF',
-    dark:  '#0D0D0E',
+    light: '#FAFAFA',
+    dark:  '#0A0A14',
   },
 
   // ---------------------------------------------------------------------------
@@ -32,16 +32,16 @@ export const theme = {
   // ---------------------------------------------------------------------------
   textColor: {
     primary: {
-      light: '#1A1A1A',
+      light: '#1C1C1E',
       dark:  '#F5F5F7',
     },
     secondary: {
-      light: '#4B4B4B',
+      light: '#48484A',
       dark:  '#A0A0A8',
     },
     muted: {
-      light: '#8B8B9A',
-      dark:  '#6B6B7A',
+      light: '#8E8E93',
+      dark:  '#636366',
     },
   },
 
@@ -50,23 +50,23 @@ export const theme = {
   // ---------------------------------------------------------------------------
   cardBackground: {
     light: '#FFFFFF',
-    dark:  '#1A1A2E',
+    dark:  '#1C1C2E',
   },
 
   // ---------------------------------------------------------------------------
-  // Border radius scale
+  // Border radius scale — slightly more generous for Gen Z aesthetic
   // ---------------------------------------------------------------------------
   borderRadius: {
-    small:  4,   // px — subtle rounding (badges, chips)
-    medium: 8,   // px — default cards
-    large:  16,  // px — modals, hero cards
+    small:  6,   // px — badges, chips, buttons
+    medium: 12,  // px — default cards
+    large:  20,  // px — modals, hero cards
   },
 
   // ---------------------------------------------------------------------------
-  // Typography
+  // Typography — modern geometric heading, clean body
   // ---------------------------------------------------------------------------
   fontFamily: {
-    heading: '"Georgia", "Times New Roman", Times, serif',
+    heading: '"Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif',
     body:    '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
 
@@ -88,31 +88,31 @@ export const theme = {
   // Category colours — one hex per content vertical (matches seed.sql slugs)
   // ---------------------------------------------------------------------------
   categoryColors: {
-    technology:      '#2980B9', // tech blue
-    entertainment:   '#8E44AD', // vibrant purple
-    sports:          '#E67E22', // energetic orange
-    politics:        '#C0392B', // authoritative red
-    'business-finance': '#27AE60', // financial green
-    'health-science':   '#16A085', // clinical teal
-    lifestyle:       '#F39C12', // warm amber
-    'world-news':    '#2C3E50', // neutral navy
-    'culture-arts':  '#D35400', // rich terracotta
-    environment:     '#1ABC9C', // eco green
+    technology:      '#3478F6', // modern blue
+    entertainment:   '#AF52DE', // rich purple
+    sports:          '#FF6B35', // vibrant orange
+    politics:        '#E8384F', // coral-red
+    'business-finance': '#30D158', // fresh green
+    'health-science':   '#00C7BE', // teal
+    lifestyle:       '#FFB340', // warm gold
+    'world-news':    '#3A3A4A', // charcoal
+    'culture-arts':  '#FF6482', // rose
+    environment:     '#34C759', // eco green
   },
 
   // ---------------------------------------------------------------------------
   // Viral tier colours
   // ---------------------------------------------------------------------------
   viralTierColors: {
-    tier1: '#E63946', // red-orange — hottest stories
-    tier2: '#F4A261', // amber      — trending stories
-    tier3: '#2A9D8F', // green      — emerging stories
+    tier1: '#E8384F', // coral-red — hottest stories
+    tier2: '#FFB340', // gold      — trending stories
+    tier3: '#30D158', // green     — emerging stories
   },
 
   // ---------------------------------------------------------------------------
   // Ad slot background
   // ---------------------------------------------------------------------------
-  adSlotBackground: '#F0F0F5',
+  adSlotBackground: '#F2F2F7',
 } as const;
 
 export type Theme = typeof theme;

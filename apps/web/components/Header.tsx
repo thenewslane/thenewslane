@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import Link                 from 'next/link';
 import { usePathname }      from 'next/navigation';
+import { Logo }             from './Logo';
 
 const PUBLICATION_NAME = process.env.NEXT_PUBLIC_PUBLICATION_NAME ?? 'theNewslane';
 
@@ -59,17 +60,7 @@ export function Header() {
             textDecoration: 'none',
           }}
         >
-          {/* Colour swatch acting as a simple logo mark */}
-          <span
-            aria-hidden
-            style={{
-              display:         'block',
-              width:           28,
-              height:          28,
-              borderRadius:    'var(--radius-small)',
-              backgroundColor: 'var(--color-primary)',
-            }}
-          />
+          <Logo size={28} />
           <span
             style={{
               fontFamily:  'var(--font-heading)',

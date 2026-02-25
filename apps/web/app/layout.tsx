@@ -76,7 +76,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width:        'device-width',
   initialScale: 1,
-  themeColor:   '#AD2D37', // brand primary — matches --color-primary token
+  themeColor:   '#E8384F', // brand primary — matches --color-primary token
 };
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,7 @@ export default function RootLayout({
         />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
         />
         {/* Author entity markup — establishes E-E-A-T signals sitewide */}
         <AuthorSchema />
