@@ -47,7 +47,8 @@ class ContentGenerator:
         category = topic.get("category", "World News")
         viral_tier = topic.get("viral_tier", 3)
         viral_score = topic.get("viral_score", 0.0)
-        
+        source_country = (topic.get("source_country") or "").upper()
+
         # Determine framing based on viral tier
         if viral_tier == 1:
             urgency_context = "HIGH URGENCY: This is a Tier 1 viral topic. Use urgent, immediate framing and language that conveys breaking news significance."
@@ -56,14 +57,37 @@ class ContentGenerator:
         else:
             urgency_context = "MEASURED TONE: This is a Tier 3 topic. Use thoughtful, editorial language with balanced analysis."
 
+        # Country-specific context guidance
+        _COUNTRY_NAMES = {
+            "IN": "India", "GB": "United Kingdom", "AU": "Australia",
+            "US": "United States", "DE": "Germany", "SE": "Sweden", "NO": "Norway",
+        }
+        if source_country and source_country not in ("US", "GLOBAL", ""):
+            country_name = _COUNTRY_NAMES.get(source_country, source_country)
+            geo_context = (
+                f"- Source Country: {country_name} ({source_country})\n"
+                f"- This story originates from {country_name}. Write for a global English-speaking audience:\n"
+                f"  • State the country of origin clearly in the article.\n"
+                f"  • Expand country-specific acronyms on first use "
+                f"(e.g. POCSO = Protection of Children from Sexual Offences Act; "
+                f"HC = High Court; SC = Supreme Court; FIR = First Information Report; "
+                f"BJP/INC = political parties; IPC = Indian Penal Code; ED = Enforcement Directorate; "
+                f"MLA/MP = legislative titles).\n"
+                f"  • Briefly explain unfamiliar institutions or laws for non-local readers."
+            )
+        else:
+            geo_context = ""
+
+        geo_block = f"\n{geo_context}" if geo_context else ""
+
         return f"""You are a professional content creator. Generate comprehensive content for this trending topic. Return ONLY a valid JSON object with no additional text.
 
 TOPIC CONTEXT:
 - Title: {topic_title}
-- Category: {category} 
+- Category: {category}
 - Headlines: {headline_cluster}
 - Viral Tier: {viral_tier} (Score: {viral_score})
-- {urgency_context}
+- {urgency_context}{geo_block}
 
 REQUIRED JSON STRUCTURE:
 {{

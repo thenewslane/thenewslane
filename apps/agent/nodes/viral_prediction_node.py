@@ -25,6 +25,52 @@ from utils.supabase_client import db
 
 log = get_logger(__name__)
 
+# ── Feed-name → ISO country code ──────────────────────────────────────────────
+_FEED_COUNTRY: dict[str, str] = {
+    "times_of_india": "IN",
+    "the_hindu":      "IN",
+    "bbc_uk":         "GB",
+    "guardian_world": "GB",
+    "guardian_tech":  "GB",
+    "guardian_env":   "GB",
+    "sky_news":       "GB",
+    "abc_australia":  "AU",
+    "thelocal_se":    "SE",
+    "thelocal_no":    "NO",
+}
+
+
+def _best_title(topic: RawTopic) -> str:
+    """
+    Return the best original headline from raw_rows, preserving source casing
+    (e.g. POCSO, HC, BJP, IPC). Falls back to Python title-case as a last resort.
+    """
+    for pr in topic.raw_rows:
+        t = (pr.get("title") or "").strip()
+        if t and len(t) > 10:
+            return t
+    return topic.keyword.title()
+
+
+def _infer_source_country(topic: RawTopic) -> str:
+    """
+    Infer ISO-2 country code from raw_rows engagement_data.
+    Returns "" when the origin cannot be determined.
+    """
+    for pr in topic.raw_rows:
+        eng = pr.get("engagement_data") or {}
+        # NewsAPI supplies explicit country code
+        country = eng.get("country", "")
+        if country:
+            return str(country).upper()
+        # RSS feeds: use feed_name mapping
+        for key in ("feed_name",):
+            feed = eng.get(key) or (pr.get("raw_data") or {}).get(key, "")
+            if feed in _FEED_COUNTRY:
+                return _FEED_COUNTRY[feed]
+    return ""
+
+
 # ── Tier thresholds (0–100 scale) ─────────────────────────────────────────────
 # Set so only ~2% of scored topics are rejected (bottom 2%: score < 2)
 
@@ -221,11 +267,13 @@ class ViralPredictionNode:
 
             # ── 5. Persist trending_topic ─────────────────────────────────────
             slug = self._make_slug(topic.keyword, batch_id)
+            best_title     = _best_title(topic)
+            source_country = _infer_source_country(topic)
             try:
                 topic_row = db.insert_topic(
                     {
                         "batch_id":   batch_id,
-                        "title":      topic.keyword.title(),
+                        "title":      best_title,
                         "slug":       slug,
                         "status":     "predicting",
                         "viral_tier": tier,
@@ -271,6 +319,8 @@ class ViralPredictionNode:
                     {
                         "topic_id":      topic_id,
                         "keyword":       topic.keyword,
+                        "title":         best_title,
+                        "source_country": source_country,
                         "score":         final_score,
                         "viral_tier":    tier,
                         "viral_score":   round(final_score / 100.0, 4),

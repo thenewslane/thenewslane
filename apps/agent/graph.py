@@ -118,8 +118,9 @@ def _node_predict_viral(state: AgentState) -> dict[str, Any]:
                 **t,
                 # `id` = DB UUID created by predict_virality
                 "id":             t.get("id") or t.get("topic_id"),
-                # `title` = title-cased keyword (or existing title)
+                # `title` = original headline preserved from source (set by viral_prediction_node)
                 "title":          t.get("title") or str(t.get("keyword", "")).title(),
+                "source_country": t.get("source_country", ""),
                 "headline_cluster": t.get("headline_cluster", ""),
             })
 
