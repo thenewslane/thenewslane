@@ -143,15 +143,14 @@ function HeroCarousel({ topics }: { topics: TrendingTopic[] }) {
         }}
       />
 
-      {/* LIVE badge */}
-      <div style={{ position: 'absolute', top: 16, left: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ background: BRAND_RED, color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 4, letterSpacing: 1 }}>LIVE</span>
-        {catName(topic) && (
+      {/* Category badge */}
+      {catName(topic) && (
+        <div style={{ position: 'absolute', top: 16, left: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,.2)' }}>
             {catName(topic)}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Content */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 20px 16px' }}>
