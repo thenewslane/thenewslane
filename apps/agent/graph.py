@@ -63,23 +63,33 @@ class AgentState(TypedDict):
 
 
 def _node_collect(state: AgentState) -> dict[str, Any]:
-    """Collect trending signals from Twitter, Google Trends, Reddit + NewsAPI."""
+    """
+    Collect trending signals from all configured sources.
+
+    Each source runs as a parallel async task with a hard 5-minute deadline.
+    In-flight HTTP requests get a grace period to finish before cancellation.
+    Downstream nodes (viral scoring, brand safety, etc.) only run after this
+    node returns.
+    """
     from nodes.signal_collector import collect_signals  # noqa: PLC0415
 
     log.info("[collect] starting  batch_id=%s", state["batch_id"])
+    t0 = time.time()
     try:
         result = collect_signals({"batch_id": state["batch_id"]})
         raw = result.get("raw_signals", [])
-        total = len(raw)
-        log.info("[collect] %d raw topics collected", total)
+        elapsed = round(time.time() - t0, 1)
+        log.info("[collect] %d raw topics collected in %.1fs", len(raw), elapsed)
+        print(f"[collect] {len(raw)} topics collected in {elapsed}s", flush=True)
         for i, record in enumerate(raw, 1):
             keyword = getattr(record, "keyword", str(record)[:50])
             platforms = getattr(record, "platforms", []) or []
             platforms_str = ",".join(platforms) if platforms else "—"
-            log.info("[collect] record %d/%d: keyword=%s  platforms=%s", i, total, keyword, platforms_str)
+            log.info("[collect] record %d/%d: keyword=%s  platforms=%s", i, len(raw), keyword, platforms_str)
         return {"raw_topics": raw}
     except Exception as exc:
-        msg = f"collect: {exc}\n{traceback.format_exc()}"
+        elapsed = round(time.time() - t0, 1)
+        msg = f"collect: {exc} (after {elapsed}s)\n{traceback.format_exc()}"
         log.error(msg)
         return {"raw_topics": [], "errors": [msg]}
 

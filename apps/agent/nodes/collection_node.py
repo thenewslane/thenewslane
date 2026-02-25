@@ -639,39 +639,90 @@ async def _fetch_newsapi_counts(keywords: list[str]) -> dict[str, int]:
 
 async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     """
-    Run all collectors concurrently, merge by topic, enrich with NewsAPI,
-    and return the list of merged RawTopic objects.
+    Run all collectors as parallel tasks with a hard 5-minute deadline.
+
+    Each data source runs in its own concurrent task. When the deadline fires:
+      1. A grace period allows any in-flight HTTP request to complete.
+      2. Remaining tasks are cancelled.
+      3. Whatever was collected so far is returned.
     """
+    timeout = settings.collection_timeout_sec
+    grace = settings.collection_grace_period_sec
+
     log.info(
-        "collection: starting multi-geo collection  batch_id=%s  "
+        "collection: starting  batch_id=%s  timeout=%ds  grace=%ds  "
         "countries=US,GB,AU,IN,DE,SE,NO  topics=tech,space,environment,wildlife",
-        batch_id,
+        batch_id, timeout, grace,
     )
 
-    # Run all 5 free sources in parallel
-    results = await asyncio.gather(
-        _fetch_google_trends_rss(),
-        _fetch_newsapi_headlines(),
-        _fetch_rss_feeds(),
-        _fetch_pytrends(),
-        _fetch_hacker_news(),
-        return_exceptions=True,
-    )
+    t0 = asyncio.get_event_loop().time()
 
-    # Organize results by source
-    source_data = {
-        "google_trends_rss": results[0] if isinstance(results[0], list) else [],
-        "newsapi": results[1] if isinstance(results[1], list) else [],
-        "rss_feeds": results[2] if isinstance(results[2], list) else [],
-        "pytrends": results[3] if isinstance(results[3], list) else [],
-        "hacker_news": results[4] if isinstance(results[4], list) else [],
+    # Spawn each source as a named task so we can identify them in logs
+    source_coros = {
+        "google_trends_rss": _fetch_google_trends_rss(),
+        "newsapi":           _fetch_newsapi_headlines(),
+        "rss_feeds":         _fetch_rss_feeds(),
+        "pytrends":          _fetch_pytrends(),
+        "hacker_news":       _fetch_hacker_news(),
+    }
+    tasks = {
+        name: asyncio.create_task(coro, name=name)
+        for name, coro in source_coros.items()
     }
 
-    # Log any failures
-    source_names = ["google_trends_rss", "newsapi", "rss_feeds", "pytrends", "hacker_news"]
-    for i, result in enumerate(results):
-        if isinstance(result, Exception):
-            log.error("collection: %s source failed: %s", source_names[i], result)
+    # Wait for all tasks up to the hard deadline
+    done, pending = await asyncio.wait(
+        tasks.values(), timeout=timeout, return_when=asyncio.ALL_COMPLETED
+    )
+
+    # If there are still-running tasks, give them a grace period
+    if pending:
+        pending_names = [t.get_name() for t in pending]
+        elapsed = asyncio.get_event_loop().time() - t0
+        log.warning(
+            "collection: deadline reached after %.1fs — %d source(s) still running: %s  "
+            "(granting %ds grace for in-flight requests)",
+            elapsed, len(pending), pending_names, grace,
+        )
+        # Grace period: let in-flight HTTP responses arrive
+        if grace > 0:
+            grace_done, still_pending = await asyncio.wait(
+                pending, timeout=grace, return_when=asyncio.ALL_COMPLETED
+            )
+            done = done | grace_done
+            pending = still_pending
+
+        # Cancel anything still running after grace
+        for task in pending:
+            task.cancel()
+            log.warning("collection: cancelled source '%s' (exceeded deadline + grace)", task.get_name())
+
+        # Suppress CancelledError from cancelled tasks
+        for task in pending:
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+    elapsed_total = asyncio.get_event_loop().time() - t0
+    log.info("collection: all sources finished in %.1fs  (completed=%d, cancelled=%d)",
+             elapsed_total, len(done), len(pending))
+
+    # Collect results — each completed task returns a list[dict]
+    source_data: dict[str, list[dict[str, Any]]] = {}
+    for name, task in tasks.items():
+        if task in done and not task.cancelled():
+            try:
+                result = task.result()
+                source_data[name] = result if isinstance(result, list) else []
+            except Exception as exc:
+                log.error("collection: %s raised: %s", name, exc)
+                source_data[name] = []
+        else:
+            source_data[name] = []
+
+    for name, rows in source_data.items():
+        log.info("collection: source %-20s → %d topics", name, len(rows))
 
     # ── Fuzzy-merge topics across platforms ────────────────────────────────
     canonical: list[str] = []   # ordered list of canonical keyword strings

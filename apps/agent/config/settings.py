@@ -64,11 +64,15 @@ class Settings(BaseSettings):
     slack_webhook_url: str = Field(default="", description="Slack incoming webhook URL for pipeline notifications")
 
     # ── Pipeline tuning ───────────────────────────────────────────────────────
-    pipeline_cron: str = Field(default="0 3 * * *", description="Inngest CRON expression (default: once daily at 03:00 UTC)")
-    pipeline_interval_minutes: int = Field(default=1440, description="Built-in loop interval in minutes (used by --schedule; 1440 = once per day)")
+    pipeline_cron: str = Field(default="*/30 * * * *", description="CRON expression (default: every 30 minutes)")
+    pipeline_interval_minutes: int = Field(default=30, description="Built-in loop interval in minutes (used by --schedule)")
     batch_size_limit: int = Field(default=50, description="Max topics to process per batch")
     trends_geo: str = Field(default="US", description="ISO country code for Google Trends geo filter")
     newsapi_max_topics: int = Field(default=20, description="Max topics to query in NewsAPI per batch")
+
+    # ── Collection timeout ────────────────────────────────────────────────────
+    collection_timeout_sec: int = Field(default=300, description="Hard deadline for the entire collection phase (seconds). Default 5 minutes.")
+    collection_grace_period_sec: int = Field(default=15, description="After deadline, seconds to wait for in-flight HTTP requests to finish before cancelling")
 
     # ── Fact-check ─────────────────────────────────────────────────────────────
     pause_fact_check: bool = Field(default=True, description="If True, skip LLM/date verification; set fact_check=yes and publish for all content")
