@@ -946,7 +946,7 @@ export default function StudioCMS() {
 
   return (
     <>
-      <style>{css}</style>
+      <style suppressHydrationWarning>{css}</style>
       <div className="cms">
         {/* SIDEBAR */}
         <div className="sidebar">

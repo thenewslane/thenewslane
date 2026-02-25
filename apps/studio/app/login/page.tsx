@@ -70,7 +70,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <style>{css}</style>
+      <style suppressHydrationWarning>{css}</style>
       <div className="login-wrap">
         <div className="login-logo">
           <div className="logo-mark">theNewslane</div>
