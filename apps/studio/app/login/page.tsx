@@ -3,15 +3,16 @@
 /**
  * Studio CMS Login — /login
  *
- * Email + password via Supabase Auth.
- * On success redirects to the CMS dashboard.
+ * Uses @supabase/ssr createBrowserClient so the session is written
+ * to cookies — which the middleware can read to allow access.
  */
 
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 
 function getSupabase() {
-  return createClient(
+  return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
@@ -46,10 +47,11 @@ const css = `
 `;
 
 export default function LoginPage() {
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState('');
+  const router                      = useRouter();
+  const [email,    setEmail]        = useState('');
+  const [password, setPassword]     = useState('');
+  const [loading,  setLoading]      = useState(false);
+  const [error,    setError]        = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,7 +67,10 @@ export default function LoginPage() {
       return;
     }
 
-    window.location.href = '/';
+    // Refresh server state so the middleware cookie is recognised,
+    // then navigate to the CMS dashboard.
+    router.refresh();
+    router.push('/');
   }
 
   return (
@@ -106,7 +111,11 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <button className="btn btn-primary" type="submit" disabled={loading || !email || !password}>
+            <button
+              className="btn btn-primary"
+              type="submit"
+              disabled={loading || !email || !password}
+            >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>

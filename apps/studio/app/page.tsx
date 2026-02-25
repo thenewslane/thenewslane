@@ -13,13 +13,16 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient }                     from '@supabase/supabase-js';
+import { createBrowserClient }              from '@supabase/ssr';
 
 // ─── SUPABASE CLIENT ──────────────────────────────────────────────────────────
+// Uses @supabase/ssr so the session is stored in cookies, which the
+// middleware can read to keep the user authenticated across requests.
 function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return createClient(url, key);
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 }
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
