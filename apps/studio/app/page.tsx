@@ -550,12 +550,19 @@ function TopicsPage() {
 
 // ─── CATEGORIES PAGE ──────────────────────────────────────────────────────────
 
+type RunStatus = 'idle' | 'running' | 'done' | 'error';
+
 function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories]   = useState<Category[]>([]);
   const [topicCounts, setTopicCounts] = useState<Record<number, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [loading, setLoading]         = useState(true);
+  const [showCreate, setShowCreate]   = useState(false);
+  const [newName, setNewName]         = useState('');
+
+  // Per-category agent run state
+  const [runStatus,  setRunStatus]  = useState<Record<number, RunStatus>>({});
+  const [runMsg,     setRunMsg]     = useState<Record<number, string>>({});
+  const [limitInput, setLimitInput] = useState<Record<number, string>>({});
 
   const load = useCallback(async () => {
     const db = getSupabase();
@@ -589,6 +596,63 @@ function CategoriesPage() {
     await load();
   };
 
+  const runAgentForCategory = async (cat: Category) => {
+    const rawLimit = limitInput[cat.id]?.trim();
+    const maxTopics = rawLimit ? Math.max(1, Math.min(10, parseInt(rawLimit, 10))) : undefined;
+
+    setRunStatus(s => ({ ...s, [cat.id]: 'running' }));
+    setRunMsg(s => ({ ...s, [cat.id]: 'Starting agent…' }));
+
+    try {
+      const res  = await fetch('/api/agent/run', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ category: cat.name, max_topics: maxTopics }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setRunStatus(s => ({ ...s, [cat.id]: 'error' }));
+        setRunMsg(s => ({ ...s, [cat.id]: data.error || 'Failed to start agent' }));
+        return;
+      }
+
+      const limitNote = maxTopics ? ` (max ${maxTopics} topics)` : '';
+      setRunStatus(s => ({ ...s, [cat.id]: 'running' }));
+      setRunMsg(s => ({ ...s, [cat.id]: `Running in background${limitNote} · ${data.batch_id}` }));
+
+      // Poll runs_log every 8s until the batch appears as completed/failed
+      const db = getSupabase();
+      const poll = setInterval(async () => {
+        const { data: rows } = await db
+          .from('runs_log')
+          .select('status')
+          .eq('batch_id', data.batch_id)
+          .limit(1);
+        const row = rows?.[0];
+        if (row) {
+          clearInterval(poll);
+          const done = row.status === 'completed' || row.status === 'partial';
+          setRunStatus(s => ({ ...s, [cat.id]: done ? 'done' : 'error' }));
+          setRunMsg(s => ({ ...s, [cat.id]: `${row.status} · ${data.batch_id}` }));
+          if (done) await load(); // refresh topic counts
+        }
+      }, 8000);
+
+      // Stop polling after 10 min regardless
+      setTimeout(() => clearInterval(poll), 600_000);
+
+    } catch (err: any) {
+      setRunStatus(s => ({ ...s, [cat.id]: 'error' }));
+      setRunMsg(s => ({ ...s, [cat.id]: err.message }));
+    }
+  };
+
+  const statusColor = (s: RunStatus) =>
+    s === 'done'    ? 'var(--green)'  :
+    s === 'error'   ? 'var(--red)'    :
+    s === 'running' ? 'var(--blue)'   : 'var(--text3)';
+
   return (
     <div>
       <div className="section-header" style={{ marginBottom: 20 }}>
@@ -596,21 +660,77 @@ function CategoriesPage() {
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ New Category</button>
       </div>
 
+      <div className="info-box" style={{ marginBottom: 16 }}>
+        ▶ Use <strong>Run Agent</strong> to fetch and publish new topics for a specific category on demand.
+        Optionally set a topic limit (1–10). Leave blank for a full pipeline run.
+        The agent runs in the background — check <strong>Agent Runs</strong> for progress.
+      </div>
+
       {loading ? <Spinner /> : (
         <div className="card" style={{ padding: 0 }}>
           <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Topics</th><th>Actions</th></tr></thead>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Topics</th>
+                <th style={{ width: 90 }}>Limit</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              {categories.map(c => (
-                <tr key={c.id}>
-                  <td style={{ color: 'var(--text3)', fontSize: 12 }}>{c.id}</td>
-                  <td style={{ fontWeight: 500 }}>{c.name}</td>
-                  <td style={{ fontSize: 12, color: 'var(--text2)' }}>{topicCounts[c.id] || 0} topics</td>
-                  <td>
-                    <button className="btn btn-sm btn-danger" onClick={() => deleteCategory(c.id)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
+              {categories.map(c => {
+                const status = runStatus[c.id] || 'idle';
+                const msg    = runMsg[c.id]    || '';
+                return (
+                  <tr key={c.id}>
+                    <td style={{ color: 'var(--text3)', fontSize: 12 }}>{c.id}</td>
+                    <td style={{ fontWeight: 500 }}>{c.name}</td>
+                    <td style={{ fontSize: 12, color: 'var(--text2)' }}>{topicCounts[c.id] || 0} topics</td>
+
+                    {/* Topic limit input */}
+                    <td>
+                      <input
+                        className="form-input"
+                        type="number"
+                        min={1}
+                        max={10}
+                        placeholder="1–10"
+                        value={limitInput[c.id] || ''}
+                        onChange={e => setLimitInput(s => ({ ...s, [c.id]: e.target.value }))}
+                        disabled={status === 'running'}
+                        style={{ padding: '4px 8px', fontSize: 12, width: 70 }}
+                        title="Optional: limit topics (1–10). Leave blank for full run."
+                      />
+                    </td>
+
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => runAgentForCategory(c)}
+                          disabled={status === 'running'}
+                          title={`Run agent for ${c.name}`}
+                        >
+                          {status === 'running' ? '⏳ Running…' : '▶ Run Agent'}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => deleteCategory(c.id)}
+                          disabled={status === 'running'}
+                        >
+                          Delete
+                        </button>
+                        {msg && (
+                          <span style={{ fontSize: 11, color: statusColor(status), maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {status === 'done' ? '✓' : status === 'error' ? '✗' : '●'} {msg}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

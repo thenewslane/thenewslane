@@ -41,6 +41,10 @@ class AgentState(TypedDict):
     batch_id: str
     run_start_time: float
 
+    # Optional CMS-triggered filters (set by run_pipeline when called from studio)
+    category_filter: str | None   # e.g. "Technology" — keep only this category after classify
+    max_topics: int | None        # cap topics entering generate_content (1-10)
+
     # Data accumulated by each stage
     raw_topics: list[Any]                          # list[RawTopic] from collect
     viral_scored_topics: list[dict[str, Any]]      # topics scoring ≥ 10
@@ -174,6 +178,48 @@ def _node_classify(state: AgentState) -> dict[str, Any]:
         log.error(msg)
         # Pass topics through without classification on error
         return {"classified_topics": topics, "errors": [msg]}
+
+
+# ── Node: filter_category ─────────────────────────────────────────────────────
+
+
+def _node_filter_category(state: AgentState) -> dict[str, Any]:
+    """
+    Optional CMS-triggered filter applied after classify.
+
+    If `category_filter` is set, keep only topics whose category name matches
+    (case-insensitive). If `max_topics` is set, cap the list at that number.
+    When neither is set the node is a no-op passthrough.
+    """
+    classified  = state.get("classified_topics", [])
+    cat_filter  = state.get("category_filter")
+    max_topics  = state.get("max_topics")
+
+    filtered = classified
+
+    if cat_filter:
+        cat_lower = cat_filter.lower().strip()
+        filtered = [
+            t for t in filtered
+            if (t.get("category") or "").lower().strip() == cat_lower
+            or (t.get("category_name") or "").lower().strip() == cat_lower
+        ]
+        log.info(
+            "[filter_category] category='%s'  %d → %d topics",
+            cat_filter, len(classified), len(filtered),
+        )
+        print(
+            f"[filter_category] Filtered to category '{cat_filter}': "
+            f"{len(classified)} → {len(filtered)} topics",
+            flush=True,
+        )
+
+    if max_topics and len(filtered) > max_topics:
+        log.info("[filter_category] capping %d → %d (max_topics=%d)", len(filtered), max_topics, max_topics)
+        print(f"[filter_category] Capping to {max_topics} topics (max_topics={max_topics})", flush=True)
+        filtered = filtered[:max_topics]
+
+    return {"classified_topics": filtered}
 
 
 # ── Node: generate_content ────────────────────────────────────────────────────
@@ -475,6 +521,7 @@ def build_graph() -> Any:
     g.add_node("predict_viral",       _node_predict_viral)
     g.add_node("filter_brand_safety", _node_filter_brand_safety)
     g.add_node("classify",            _node_classify)
+    g.add_node("filter_category",     _node_filter_category)
     g.add_node("generate_content",    _node_generate_content)
     g.add_node("source_video",        _node_source_video)
     g.add_node("generate_media",      _node_generate_media)
@@ -491,7 +538,8 @@ def build_graph() -> Any:
     )
 
     g.add_edge("filter_brand_safety", "classify")
-    g.add_edge("classify",            "generate_content")
+    g.add_edge("classify",            "filter_category")
+    g.add_edge("filter_category",     "generate_content")
     g.add_edge("generate_content",    "source_video")
     g.add_edge("source_video",        "generate_media")
     g.add_edge("generate_media",      "publish")
