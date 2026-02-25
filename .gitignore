@@ -37,3 +37,4 @@ apps/agent/*.egg-info/
 # Editor
 .vscode/
 .idea/
+.vercel

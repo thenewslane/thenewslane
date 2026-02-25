@@ -37,22 +37,88 @@ log = get_logger(__name__)
 
 _MERGE_THRESHOLD = 70  # token_set_ratio score (0-100) for fuzzy matching (dedup threshold)
 
-# RSS feed URLs
+# ── RSS feeds ─────────────────────────────────────────────────────────────────
+# Grouped by region / topic so failures in one area don't affect others.
 RSS_FEEDS = {
-    "bbc": "https://feeds.bbci.co.uk/news/rss.xml",
-    "reuters": "https://feeds.reuters.com/reuters/topNews", 
-    "cnn": "http://rss.cnn.com/rss/edition.rss",
-    "sky_news": "https://feeds.skynews.com/feeds/rss/home.xml"
+    # ── Global / International ──────────────────────────────────────────────
+    "bbc_world":        "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "reuters":          "https://feeds.reuters.com/reuters/topNews",
+    "al_jazeera":       "https://www.aljazeera.com/xml/rss/all.xml",
+    "france24":         "https://www.france24.com/en/rss",
+    "dw_world":         "https://rss.dw.com/xml/rss-en-all",
+
+    # ── UK ──────────────────────────────────────────────────────────────────
+    "guardian_world":   "https://www.theguardian.com/world/rss",
+    "sky_news":         "https://feeds.skynews.com/feeds/rss/home.xml",
+    "bbc_uk":           "https://feeds.bbci.co.uk/news/uk/rss.xml",
+
+    # ── Australia ───────────────────────────────────────────────────────────
+    "abc_australia":    "https://www.abc.net.au/news/feed/51120/rss.xml",
+
+    # ── India ───────────────────────────────────────────────────────────────
+    "the_hindu":        "https://www.thehindu.com/news/feeder/default.rss",
+    "times_of_india":   "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+
+    # ── Scandinavia (English-language editions) ─────────────────────────────
+    "thelocal_se":      "https://www.thelocal.se/feed/",
+    "thelocal_no":      "https://www.thelocal.no/feed/",
+
+    # ── Technology ──────────────────────────────────────────────────────────
+    "bbc_tech":         "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    "techcrunch":       "https://techcrunch.com/feed/",
+    "the_verge":        "https://www.theverge.com/rss/index.xml",
+    "ars_technica":     "http://feeds.arstechnica.com/arstechnica/index",
+    "wired":            "https://www.wired.com/feed/rss",
+    "guardian_tech":    "https://www.theguardian.com/technology/rss",
+    "mit_tech_review":  "https://www.technologyreview.com/topnews.rss",
+
+    # ── Space Exploration ───────────────────────────────────────────────────
+    "spacenews":        "https://spacenews.com/feed/",
+    "spaceflight_now":  "https://spaceflightnow.com/feed/",
+    "universe_today":   "https://www.universetoday.com/feed/",
+
+    # ── Environment / Nature / Wildlife ─────────────────────────────────────
+    "guardian_env":     "https://www.theguardian.com/environment/rss",
+    "bbc_science_env":  "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+    "carbon_brief":     "https://www.carbonbrief.org/feed/",
+    "new_scientist":    "https://www.newscientist.com/feed/home",
 }
 
-# Google Trends RSS feeds (Note: These may not be publicly available)
+# ── Google Trends RSS (multi-country) ─────────────────────────────────────────
+# Note: some country feeds return 404 — handled gracefully per-feed.
 GOOGLE_TRENDS_RSS = {
-    "daily": "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US",
-    "realtime": "https://trends.google.com/trends/trendingsearches/realtime/rss?geo=US&category=all"
+    "us_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US",
+    "gb_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=GB",
+    "au_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=AU",
+    "in_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=IN",
+    "de_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=DE",
 }
 
-# NewsAPI categories to fetch in parallel
-NEWSAPI_CATEGORIES = ["general", "technology", "entertainment", "sports", "science", "health"]
+# ── NewsAPI: countries + categories ───────────────────────────────────────────
+# Top-headlines accepts ONE country per request.  We fetch general+tech+science
+# for each country, then add global keyword searches for niche topics.
+NEWSAPI_COUNTRY_CATEGORIES: list[tuple[str, str]] = [
+    # (country, category)
+    ("us", "general"), ("us", "technology"), ("us", "science"),
+    ("gb", "general"), ("gb", "technology"), ("gb", "science"),
+    ("au", "general"), ("au", "technology"),
+    ("in", "general"), ("in", "technology"),
+    # Science/health (US only to keep total requests down)
+    ("us", "health"), ("us", "entertainment"), ("us", "sports"),
+]
+
+# Keyword searches via /v2/everything — no country lock, global English results
+NEWSAPI_KEYWORDS = [
+    "space exploration",
+    "environment climate change",
+    "wildlife nature conservation",
+    "artificial intelligence technology",
+    "renewable energy",
+    "India news",
+    "Europe news",
+    "Australia news",
+    "Scandinavia Nordic news",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -204,83 +270,116 @@ async def _fetch_google_trends_rss() -> list[dict[str, Any]]:
 
 
 async def _fetch_newsapi_headlines() -> list[dict[str, Any]]:
-    """Fetch top headlines from NewsAPI across multiple categories."""
+    """
+    Fetch top headlines from NewsAPI across multiple countries + categories,
+    plus global keyword searches for niche topics (space, environment, wildlife…).
+    """
     if not settings.newsapi_key:
         log.warning("NewsAPI key missing - skipping NewsAPI collection")
         return []
-    
+
     rows: list[dict[str, Any]] = []
-    
+
     async with httpx.AsyncClient(timeout=30.0) as client:
-        tasks = []
-        
-        for category in NEWSAPI_CATEGORIES:
-            task = _fetch_newsapi_category(client, category)
-            tasks.append(task)
-        
-        # Fetch all categories in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        for i, result in enumerate(results):
-            category = NEWSAPI_CATEGORIES[i]
+        # ── Country × category headline requests ──────────────────────────
+        country_tasks = [
+            _fetch_newsapi_country_category(client, country, category)
+            for country, category in NEWSAPI_COUNTRY_CATEGORIES
+        ]
+        # ── Global keyword searches ────────────────────────────────────────
+        keyword_tasks = [
+            _fetch_newsapi_keyword(client, kw)
+            for kw in NEWSAPI_KEYWORDS
+        ]
+
+        all_results = await asyncio.gather(*country_tasks, *keyword_tasks, return_exceptions=True)
+
+        labels = [f"{c}/{cat}" for c, cat in NEWSAPI_COUNTRY_CATEGORIES] + NEWSAPI_KEYWORDS
+        for label, result in zip(labels, all_results):
             if isinstance(result, Exception):
-                log.error(f"NewsAPI category {category} failed: {result}")
-                continue
-                
-            rows.extend(result)
-    
-    log.info(f"NewsAPI: collected {len(rows)} topics across {len(NEWSAPI_CATEGORIES)} categories")
+                log.warning(f"NewsAPI [{label}] failed: {result}")
+            else:
+                rows.extend(result)
+
+    log.info(
+        "NewsAPI: collected %d topics  (%d country-cat + %d keyword requests)",
+        len(rows), len(NEWSAPI_COUNTRY_CATEGORIES), len(NEWSAPI_KEYWORDS),
+    )
     return rows
 
 
-async def _fetch_newsapi_category(client: httpx.AsyncClient, category: str) -> list[dict[str, Any]]:
-    """Fetch headlines for a specific NewsAPI category."""
+async def _fetch_newsapi_country_category(
+    client: httpx.AsyncClient, country: str, category: str
+) -> list[dict[str, Any]]:
+    """Fetch top-headlines for one (country, category) pair."""
     try:
         resp = await client.get(
             "https://newsapi.org/v2/top-headlines",
             params={
                 "category": category,
-                "country": "us",
-                "pageSize": 20,
-                "language": "en",
+                "country": country,
+                "pageSize": 15,
                 "apiKey": settings.newsapi_key,
             },
         )
         resp.raise_for_status()
-        data = resp.json()
-        articles = data.get("articles", [])
-        
-        rows = []
-        for rank, article in enumerate(articles, start=1):
-            raw_title = article.get("title", "").split(" - ")[0].strip()  # Remove source suffix
-            keyword = _normalize(raw_title)
-            if not keyword or len(keyword) < 5:
-                continue
-            
-            rows.append({
-                "keyword": keyword,
-                "rank": rank,
-                "platform_row": {
-                    "platform": _normalize_platform("google_news"),
-                    "topic_keyword": keyword,
-                    "title": raw_title,
-                    "url": article.get("url", ""),
-                    "source_id": article.get("url", ""),
-                    "raw_data": article,
-                    "engagement_data": {
-                        "rank": rank,
-                        "category": category,
-                        "source": article.get("source", {}).get("name", ""),
-                        "published_at": article.get("publishedAt", "")
-                    }
-                }
-            })
-            
-        return rows
-        
+        articles = resp.json().get("articles", [])
+        return _articles_to_rows(articles, meta={"country": country, "category": category})
     except Exception as exc:
-        log.error(f"NewsAPI category {category} failed: {exc}")
+        log.warning(f"NewsAPI top-headlines [{country}/{category}] failed: {exc}")
         return []
+
+
+async def _fetch_newsapi_keyword(client: httpx.AsyncClient, keyword: str) -> list[dict[str, Any]]:
+    """Fetch recent global articles matching a keyword via /v2/everything."""
+    try:
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+        resp = await client.get(
+            "https://newsapi.org/v2/everything",
+            params={
+                "q":        keyword,
+                "from":     yesterday,
+                "language": "en",
+                "sortBy":   "popularity",
+                "pageSize": 15,
+                "apiKey":   settings.newsapi_key,
+            },
+        )
+        resp.raise_for_status()
+        articles = resp.json().get("articles", [])
+        return _articles_to_rows(articles, meta={"keyword_search": keyword})
+    except Exception as exc:
+        log.warning(f"NewsAPI keyword [{keyword}] failed: {exc}")
+        return []
+
+
+def _articles_to_rows(articles: list[dict], meta: dict) -> list[dict[str, Any]]:
+    """Convert a list of NewsAPI article dicts to pipeline row dicts."""
+    rows = []
+    for rank, article in enumerate(articles, start=1):
+        raw_title = article.get("title", "").split(" - ")[0].strip()
+        keyword = _normalize(raw_title)
+        if not keyword or len(keyword) < 5:
+            continue
+        rows.append({
+            "keyword": keyword,
+            "rank": rank,
+            "platform_row": {
+                "platform":   _normalize_platform("google_news"),
+                "topic_keyword": keyword,
+                "title":      raw_title,
+                "url":        article.get("url", ""),
+                "source_id":  article.get("url", ""),
+                "raw_data":   article,
+                "engagement_data": {
+                    "rank":         rank,
+                    "source":       article.get("source", {}).get("name", ""),
+                    "published_at": article.get("publishedAt", ""),
+                    **meta,
+                },
+            },
+        })
+    return rows
 
 
 # ---------------------------------------------------------------------------
