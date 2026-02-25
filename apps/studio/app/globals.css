@@ -1,0 +1,11 @@
+/* Studio CMS — minimal global reset; all component styles are inline via <style> tag */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
