@@ -470,66 +470,57 @@ async def _fetch_single_rss_feed(client: httpx.AsyncClient, feed_name: str, feed
 # ---------------------------------------------------------------------------
 
 
+# Countries to pull pytrends trending searches from
+_PYTRENDS_COUNTRIES = [
+    "united_states",
+    "united_kingdom",
+    "australia",
+    "india",
+]
+
+
 async def _fetch_pytrends() -> list[dict[str, Any]]:
-    """Fetch trending searches using pytrends."""
+    """Fetch trending searches using pytrends across multiple countries."""
     rows: list[dict[str, Any]] = []
-    
+
+    def _pytrends_sync() -> list[dict]:
+        topics: list[dict] = []
+        for pn in _PYTRENDS_COUNTRIES:
+            try:
+                pytrends = TrendReq(hl="en-US", tz=360)
+                df = pytrends.trending_searches(pn=pn)
+                if df is not None and not df.empty:
+                    for i, topic in enumerate(df.head(15)[0].tolist()):
+                        topics.append({"topic": str(topic), "rank": i + 1, "country": pn})
+            except Exception as exc:
+                log.warning(f"Pytrends [{pn}] failed: {exc}")
+        return topics
+
     try:
-        # Pytrends is synchronous, so run in thread pool
-        def _pytrends_sync():
-            pytrends = TrendReq(hl='en-US', tz=360)
-            
-            # Get trending searches
-            trending_searches = pytrends.trending_searches(pn='united_states')
-            
-            topics = []
-            if trending_searches is not None and not trending_searches.empty:
-                # Get top 20 trending topics
-                for i, topic in enumerate(trending_searches.head(20)[0].tolist()):
-                    topics.append({
-                        "topic": str(topic),
-                        "rank": i + 1
-                    })
-            
-            return topics
-        
-        # Run Pytrends API call in thread pool
         loop = asyncio.get_event_loop()
-        topics = await loop.run_in_executor(None, _pytrends_sync)
-        
-        for topic_data in topics:
+        all_topics = await loop.run_in_executor(None, _pytrends_sync)
+
+        for topic_data in all_topics:
             topic = topic_data["topic"].strip()
-            if not topic:
-                continue
-                
             keyword = _normalize(topic)
             if not keyword:
                 continue
-            
             rows.append({
                 "keyword": keyword,
                 "rank": topic_data["rank"],
                 "platform_row": {
-                    "platform": _normalize_platform("google_trends"),
+                    "platform":      _normalize_platform("google_trends"),
                     "topic_keyword": keyword,
-                    "title": topic,
-                    "source_id": f"pytrends_{topic_data['rank']}",
-                    "raw_data": {
-                        "original_topic": topic,
-                        "rank": topic_data["rank"],
-                        "source": "pytrends"
-                    },
-                    "engagement_data": {
-                        "rank": topic_data["rank"],
-                        "source": "pytrends"
-                    }
-                }
+                    "title":         topic,
+                    "source_id":     f"pytrends_{topic_data['country']}_{topic_data['rank']}",
+                    "raw_data":      {"original_topic": topic, "rank": topic_data["rank"], "country": topic_data["country"]},
+                    "engagement_data": {"rank": topic_data["rank"], "country": topic_data["country"]},
+                },
             })
-            
     except Exception as exc:
         log.error(f"Pytrends collection failed: {exc}")
-    
-    log.info(f"Pytrends: collected {len(rows)} topics")
+
+    log.info(f"Pytrends: collected {len(rows)} topics across {len(_PYTRENDS_COUNTRIES)} countries")
     return rows
 
 
@@ -651,7 +642,11 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
     Run all collectors concurrently, merge by topic, enrich with NewsAPI,
     and return the list of merged RawTopic objects.
     """
-    log.info("collection: starting free source collection  batch_id=%s  geo=%s", batch_id, geo)
+    log.info(
+        "collection: starting multi-geo collection  batch_id=%s  "
+        "countries=US,GB,AU,IN,DE,SE,NO  topics=tech,space,environment,wildlife",
+        batch_id,
+    )
 
     # Run all 5 free sources in parallel
     results = await asyncio.gather(
