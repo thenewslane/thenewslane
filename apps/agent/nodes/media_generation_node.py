@@ -40,7 +40,7 @@ VIDEO_DURATION  = 5
 POLL_INTERVAL   = 10
 MAX_WAIT_TIME   = 300
 
-USER_AGENT = "theNewslane/1.0 (news aggregator; contact@thenewslane.com)"
+USER_AGENT = "Mozilla/5.0 (compatible; NewsBot/1.0)"
 
 # Minimum thumbnail width (pixels). Overridable via settings.thumbnail_min_width.
 THUMBNAIL_MIN_WIDTH = 1200

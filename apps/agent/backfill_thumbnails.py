@@ -24,7 +24,7 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
-USER_AGENT = "theNewslane/1.0 (news aggregator; contact@thenewslane.com)"
+USER_AGENT = "Mozilla/5.0 (compatible; NewsBot/1.0)"
 WIKI_SEARCH = "https://en.wikipedia.org/w/api.php"
 WIKI_SUMMARY = "https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
 
