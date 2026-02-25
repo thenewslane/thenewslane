@@ -91,6 +91,13 @@ class Settings(BaseSettings):
     thumbnail_min_width: int = Field(default=1200, description="Minimum thumbnail width in pixels")
     default_logo_url: str = Field(default="", description="URL of theNewslane default logo (used when no image found)")
 
+    # ── Text-to-video ─────────────────────────────────────────────────────────
+    video_backend: str = Field(default="fal", description="Video generation backend: 'fal' (fal.ai LTX-Video) or 'selfhosted' (GPU worker)")
+    fal_key: str = Field(default="", description="fal.ai API key (FAL_KEY env var)")
+    video_worker_url: str = Field(default="http://localhost:5001", description="Self-hosted video worker base URL (VIDEO_WORKER_URL env var)")
+    video_model: str = Field(default="fal-ai/ltx-video", description="fal.ai model ID for video generation")
+    video_clips: int = Field(default=8, description="Number of 8-second clips to generate per video (8 × 8s = 64s total)")
+
     @model_validator(mode="after")
     def _validate_required(self) -> "Settings":
         missing: list[str] = []

@@ -54,6 +54,7 @@ class AgentState(TypedDict):
     media_generated_topics: list[dict[str, Any]]   # topics with media assets
     published_topic_ids: list[str]                 # DB IDs written by publish node (status=published, fact_check=yes)
     fact_checked_topic_ids: list[str]              # DB IDs set to published by fact-check agent
+    video_urls: dict[str, str]                     # topic_id → video_url (telemetry from generate_video)
 
     # Errors are appended (reducer), never replaced, across all nodes
     errors: Annotated[list[str], operator.add]
@@ -307,6 +308,30 @@ def _node_source_video(state: AgentState) -> dict[str, Any]:
         return {"media_generated_topics": topics, "errors": [msg]}
 
 
+# ── Node: generate_video ──────────────────────────────────────────────────────
+
+
+def _node_generate_video(state: AgentState) -> dict[str, Any]:
+    """Generate AI videos for Tier 1 topics via fal.ai LTX-Video or self-hosted GPU worker."""
+    from nodes.generate_video_node import generate_videos  # noqa: PLC0415
+
+    topics = state.get("media_generated_topics", [])
+    tier1 = sum(1 for t in topics if t.get("viral_tier") == 1)
+    log.info("[generate_video] %d Tier 1 topics eligible  batch_id=%s", tier1, state["batch_id"])
+    try:
+        inner = {"batch_id": state["batch_id"], "topics": topics}
+        result = generate_videos(inner)
+        enriched = result.get("topics", topics)
+        video_urls = result.get("video_urls", {})
+        done = sum(1 for t in enriched if t.get("video_type") == "kling_generated" and t.get("video_url"))
+        log.info("[generate_video] %d/%d Tier 1 videos generated", done, tier1)
+        return {"media_generated_topics": enriched, "video_urls": video_urls}
+    except Exception as exc:
+        msg = f"generate_video: {exc}\n{traceback.format_exc()}"
+        log.error(msg)
+        return {"media_generated_topics": topics, "errors": [msg]}
+
+
 # ── Node: generate_media ──────────────────────────────────────────────────────
 
 
@@ -543,7 +568,7 @@ def _node_fact_check(state: AgentState) -> dict[str, Any]:
 
 
 def build_graph() -> Any:
-    """Build and compile the 9-node pipeline StateGraph (including fact_check)."""
+    """Build and compile the 10-node pipeline StateGraph (including generate_video + fact_check)."""
     g = StateGraph(AgentState)
 
     g.add_node("collect",             _node_collect)
@@ -553,6 +578,7 @@ def build_graph() -> Any:
     g.add_node("filter_category",     _node_filter_category)
     g.add_node("generate_content",    _node_generate_content)
     g.add_node("source_video",        _node_source_video)
+    g.add_node("generate_video",      _node_generate_video)
     g.add_node("generate_media",      _node_generate_media)
     g.add_node("publish",             _node_publish)
     g.add_node("fact_check",          _node_fact_check)
@@ -570,7 +596,8 @@ def build_graph() -> Any:
     g.add_edge("classify",            "filter_category")
     g.add_edge("filter_category",     "generate_content")
     g.add_edge("generate_content",    "source_video")
-    g.add_edge("source_video",        "generate_media")
+    g.add_edge("source_video",        "generate_video")
+    g.add_edge("generate_video",      "generate_media")
     g.add_edge("generate_media",      "publish")
     g.add_edge("publish",             "fact_check")
     g.add_edge("fact_check",          END)
