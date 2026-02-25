@@ -52,10 +52,13 @@ type RunLog = {
   id: string;
   batch_id: string;
   status: string;
-  topics_collected: number | null;
+  signals_collected: number | null;
+  topics_processed: number | null;
   topics_published: number | null;
-  errors: number | null;
-  duration_seconds: number | null;
+  topics_rejected: number | null;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
   created_at: string;
 };
 
@@ -325,11 +328,10 @@ function Dashboard({ onNavigate }: { onNavigate: (p: string) => void }) {
           )}
           {recentRuns.map((r, i) => (
             <div key={i} className="activity-item">
-              <div className="activity-dot" style={{ background: r.status === 'completed' ? 'var(--green)' : r.status === 'failed' ? 'var(--red)' : 'var(--blue)' }} />
+              <div className="activity-dot" style={{ background: r.status === 'completed' || r.status === 'partial' ? 'var(--green)' : r.status === 'failed' ? 'var(--red)' : 'var(--blue)' }} />
               <div>
                 <div className="activity-text">
-                  {r.topics_published ?? 0} published · {r.topics_collected ?? 0} collected · {r.errors ?? 0} errors
-                  {r.duration_seconds ? ` · ${r.duration_seconds}s` : ''}
+                  {r.topics_published ?? 0} published · {r.signals_collected ?? 0} collected · {r.topics_rejected ?? 0} rejected
                 </div>
                 <div className="activity-time">{r.batch_id} · {new Date(r.created_at).toLocaleString()}</div>
               </div>
@@ -757,6 +759,103 @@ function CategoriesPage() {
   );
 }
 
+// ─── RUN LOG PAGE ─────────────────────────────────────────────────────────────
+
+function RunLogPage() {
+  const [runs, setRuns]       = useState<RunLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    const db = getSupabase();
+    const { data, error: err } = await db
+      .from('runs_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (err) { setError(err.message); }
+    else      { setRuns((data as RunLog[]) || []); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const statusDot = (s: string) => {
+    const color = s === 'completed' || s === 'partial' ? 'var(--green)' : s === 'failed' ? 'var(--red)' : s === 'running' ? 'var(--blue)' : 'var(--text3)';
+    return <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: color, marginRight: 6 }} />;
+  };
+
+  return (
+    <div>
+      <div className="section-header" style={{ marginBottom: 20 }}>
+        <div>
+          <div className="section-title">Run Log</div>
+          <div className="section-sub">Last 50 pipeline runs from Supabase runs_log</div>
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={load} disabled={loading}>↺ Refresh</button>
+      </div>
+
+      {error && <div className="error-box" style={{ marginBottom: 16 }}>⚠ {error}</div>}
+
+      {loading ? <Spinner /> : (
+        <div className="card" style={{ padding: 0 }}>
+          {runs.length === 0
+            ? <div className="empty"><div className="empty-icon">📋</div><div className="empty-text">No runs logged yet.</div></div>
+            : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Batch ID</th>
+                      <th>Signals</th>
+                      <th>Processed</th>
+                      <th>Published</th>
+                      <th>Rejected</th>
+                      <th>Duration</th>
+                      <th>Error</th>
+                      <th>Started</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runs.map(r => {
+                      const dur = r.started_at && r.completed_at
+                        ? Math.round((new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()) / 1000)
+                        : null;
+                      return (
+                        <tr key={r.id}>
+                          <td>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12 }}>
+                              {statusDot(r.status)}
+                              <span className={`badge badge-${r.status}`}>{r.status}</span>
+                            </span>
+                          </td>
+                          <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--accent2)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.batch_id}</td>
+                          <td style={{ fontSize: 13 }}>{r.signals_collected ?? '—'}</td>
+                          <td style={{ fontSize: 13 }}>{r.topics_processed ?? '—'}</td>
+                          <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>{r.topics_published ?? '—'}</td>
+                          <td style={{ fontSize: 13, color: (r.topics_rejected ?? 0) > 0 ? 'var(--orange)' : 'var(--text3)' }}>{r.topics_rejected ?? '—'}</td>
+                          <td style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{dur != null ? `${dur}s` : '—'}</td>
+                          <td style={{ fontSize: 11, color: 'var(--red)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.error_message || ''}>
+                            {r.error_message ? r.error_message.slice(0, 60) + (r.error_message.length > 60 ? '…' : '') : '—'}
+                          </td>
+                          <td style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                            {r.started_at ? new Date(r.started_at).toLocaleString() : new Date(r.created_at).toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AGENTS PAGE ──────────────────────────────────────────────────────────────
 
 function AgentsPage() {
@@ -795,21 +894,26 @@ function AgentsPage() {
                 : (
                   <table>
                     <thead><tr>
-                      <th>Batch ID</th><th>Status</th><th>Collected</th>
-                      <th>Published</th><th>Errors</th><th>Duration</th><th>Time</th>
+                      <th>Batch ID</th><th>Status</th><th>Signals</th>
+                      <th>Published</th><th>Rejected</th><th>Duration</th><th>Started</th>
                     </tr></thead>
                     <tbody>
-                      {runs.map(r => (
+                      {runs.map(r => {
+                        const dur = r.started_at && r.completed_at
+                          ? Math.round((new Date(r.completed_at).getTime() - new Date(r.started_at).getTime()) / 1000)
+                          : null;
+                        return (
                         <tr key={r.id}>
                           <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--accent2)' }}>{r.batch_id}</td>
                           <td><StatusBadge status={r.status} /></td>
-                          <td style={{ fontSize: 13 }}>{r.topics_collected ?? '—'}</td>
+                          <td style={{ fontSize: 13 }}>{r.signals_collected ?? '—'}</td>
                           <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>{r.topics_published ?? '—'}</td>
-                          <td style={{ fontSize: 13, color: (r.errors ?? 0) > 0 ? 'var(--red)' : 'var(--text3)' }}>{r.errors ?? '—'}</td>
-                          <td style={{ fontSize: 12, color: 'var(--text3)' }}>{r.duration_seconds ? `${r.duration_seconds}s` : '—'}</td>
-                          <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(r.created_at).toLocaleString()}</td>
+                          <td style={{ fontSize: 13, color: (r.topics_rejected ?? 0) > 0 ? 'var(--orange)' : 'var(--text3)' }}>{r.topics_rejected ?? '—'}</td>
+                          <td style={{ fontSize: 12, color: 'var(--text3)' }}>{dur != null ? `${dur}s` : '—'}</td>
+                          <td style={{ fontSize: 12, color: 'var(--text3)' }}>{r.started_at ? new Date(r.started_at).toLocaleString() : new Date(r.created_at).toLocaleString()}</td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -1057,7 +1161,8 @@ export default function StudioCMS() {
     { id: 'dashboard',  label: 'Dashboard',    icon: '⬜', section: 'overview' },
     { id: 'topics',     label: 'Topics',        icon: '📄', section: 'content' },
     { id: 'categories', label: 'Categories',    icon: '🏷️', section: 'content' },
-    { id: 'agents',     label: 'Agent Runs',    icon: '🤖', section: 'content' },
+    { id: 'runlog',     label: 'Run Log',        icon: '📋', section: 'content' },
+    { id: 'agents',     label: 'Agent Config',   icon: '🤖', section: 'content' },
     { id: 'media',      label: 'Media & Video', icon: '🎬', section: 'tools' },
     { id: 'api',        label: 'API Manager',   icon: '🔌', section: 'tools' },
     { id: 'users',      label: 'Users & Roles', icon: '👥', section: 'admin' },
@@ -1071,7 +1176,8 @@ export default function StudioCMS() {
     dashboard:  { title: 'Dashboard',    sub: 'Live data from Supabase' },
     topics:     { title: 'Topics',        sub: 'Create, edit, publish' },
     categories: { title: 'Categories',    sub: 'Manage content structure' },
-    agents:     { title: 'Agent Runs',    sub: 'Pipeline history & config' },
+    runlog:     { title: 'Run Log',        sub: 'Full pipeline run history' },
+    agents:     { title: 'Agent Config',  sub: 'Pipeline settings' },
     media:      { title: 'Media & Video', sub: 'Sora · Veo · Vizard' },
     api:        { title: 'API Manager',   sub: 'External integrations' },
     users:      { title: 'Users & Roles', sub: 'Team permissions' },
@@ -1079,8 +1185,8 @@ export default function StudioCMS() {
 
   const pages: Record<string, React.ComponentType<any>> = {
     dashboard: Dashboard, topics: TopicsPage, categories: CategoriesPage,
-    agents: AgentsPage,   media: MediaPage,   api: APIPage,
-    users: UsersPage,
+    runlog: RunLogPage,   agents: AgentsPage, media: MediaPage,
+    api: APIPage,         users: UsersPage,
   };
   const PageComponent = pages[activePage] || Dashboard;
   const sections      = ['overview', 'content', 'tools', 'admin'];

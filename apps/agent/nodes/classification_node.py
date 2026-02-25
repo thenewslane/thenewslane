@@ -17,18 +17,18 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
-# Predefined topic categories
+# Predefined topic categories — names must match the DB categories table exactly
 TOPIC_CATEGORIES = [
     "Technology",
     "Politics",
     "Business & Finance",
     "Entertainment",
     "Sports",
-    "Science & Health",
+    "Health & Science",
     "World News",
     "Lifestyle",
+    "Culture & Arts",
     "Environment",
-    "Education",
 ]
 
 # Category name → integer ID for DB (trending_topics.category_id)
@@ -39,12 +39,12 @@ CATEGORY_NAME_TO_ID: dict[str, int] = {
     "Politics": 4,
     "Business & Finance": 5,
     "Health & Science": 6,
-    "Science & Health": 6,  # alias
+    "Science & Health": 6,  # legacy alias
     "Lifestyle": 7,
     "World News": 8,
     "Culture & Arts": 9,
     "Environment": 10,
-    "Education": 8,  # map to World News for now
+    "Education": 8,  # map to World News
 }
 DEFAULT_CATEGORY_ID = 8  # World News
 

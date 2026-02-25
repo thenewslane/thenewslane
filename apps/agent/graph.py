@@ -183,12 +183,30 @@ def _node_classify(state: AgentState) -> dict[str, Any]:
 # ── Node: filter_category ─────────────────────────────────────────────────────
 
 
+# Category name aliases — maps historical/variant names to canonical DB names (all lowercase).
+# Used by _node_filter_category so CMS-triggered runs match regardless of which name variant
+# the classifier returned.
+_CAT_ALIASES: dict[str, str] = {
+    "science & health":      "health & science",
+    "health and science":    "health & science",
+    "science and health":    "health & science",
+    "business and finance":  "business & finance",
+    "culture and arts":      "culture & arts",
+}
+
+
+def _normalise_cat(name: str) -> str:
+    """Lowercase and resolve any known alias to the canonical category name."""
+    lower = (name or "").lower().strip()
+    return _CAT_ALIASES.get(lower, lower)
+
+
 def _node_filter_category(state: AgentState) -> dict[str, Any]:
     """
     Optional CMS-triggered filter applied after classify.
 
     If `category_filter` is set, keep only topics whose category name matches
-    (case-insensitive). If `max_topics` is set, cap the list at that number.
+    (case-insensitive, alias-aware). If `max_topics` is set, cap the list.
     When neither is set the node is a no-op passthrough.
     """
     classified  = state.get("classified_topics", [])
@@ -198,18 +216,18 @@ def _node_filter_category(state: AgentState) -> dict[str, Any]:
     filtered = classified
 
     if cat_filter:
-        cat_lower = cat_filter.lower().strip()
+        cat_norm = _normalise_cat(cat_filter)
         filtered = [
             t for t in filtered
-            if (t.get("category") or "").lower().strip() == cat_lower
-            or (t.get("category_name") or "").lower().strip() == cat_lower
+            if _normalise_cat(t.get("category") or "")      == cat_norm
+            or _normalise_cat(t.get("category_name") or "") == cat_norm
         ]
         log.info(
-            "[filter_category] category='%s'  %d → %d topics",
-            cat_filter, len(classified), len(filtered),
+            "[filter_category] category='%s' (normalised='%s')  %d → %d topics",
+            cat_filter, cat_norm, len(classified), len(filtered),
         )
         print(
-            f"[filter_category] Filtered to category '{cat_filter}': "
+            f"[filter_category] Filtered to category '{cat_filter}' (→'{cat_norm}'): "
             f"{len(classified)} → {len(filtered)} topics",
             flush=True,
         )

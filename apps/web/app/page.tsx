@@ -1,11 +1,12 @@
 /**
  * Homepage — server component.
  *
- * Server-fetches:
- *   • All active categories (for CategoryFilter)
- *   • First page of published trending topics (initial hydration)
- *
- * Then hands off to <TopicFeed> (client) for filtering + infinite scroll.
+ * Fetches topics for each section of the vibrant home feed:
+ *   • Hero (top 5 topics — featured carousel)
+ *   • Breaking News (next 10 — horizontal scroll)
+ *   • Top Stories (next 6 — grid)
+ *   • Quick Reads (next 12 — compact list)
+ *   • Active categories for the category picker
  *
  * ISR: revalidate inherited from root layout (300 s).
  */
@@ -13,7 +14,7 @@
 import type { Metadata } from 'next';
 import { getServerClient } from '@platform/supabase';
 import type { TrendingTopic, Category } from '@platform/types';
-import { TopicFeed } from '@/components/TopicFeed';
+import { HomeFeed } from '@/components/HomeFeed';
 
 // ---------------------------------------------------------------------------
 // Metadata
@@ -52,40 +53,29 @@ async function getInitialData(): Promise<{
   try {
     const supabase = getServerClient();
 
-    const [topicsResult, categoriesResult, countResult] = await Promise.all([
+    const [topicsResult, categoriesResult] = await Promise.all([
       supabase
         .from('trending_topics')
         .select('*, category:categories(id, name, slug, color, description)')
         .eq('status', 'published')
         .eq('fact_check', 'yes')
         .order('published_at', { ascending: false })
-        .limit(12),
+        .limit(33),          // hero(5) + breaking(10) + topStories(6) + quickReads(12)
       supabase
         .from('categories')
         .select('*')
         .order('name', { ascending: true }),
-      // Only show categories that have at least one published, fact-checked topic
-      supabase
-        .from('trending_topics')
-        .select('category_id')
-        .eq('status', 'published')
-        .eq('fact_check', 'yes')
-        .not('category_id', 'is', null),
     ]);
 
-    const allCategories = (categoriesResult.data ?? []) as Category[];
-    const topicRows = (countResult.data ?? []) as { category_id: number }[];
-    const categoryIdsWithTopics = new Set(
-      topicRows.map((r) => r.category_id).filter((id): id is number => id != null),
-    );
-    const categories = allCategories.filter((c) => categoryIdsWithTopics.has(c.id));
+    const allTopics = (topicsResult.data ?? []) as TrendingTopic[];
+    const allCats   = (categoriesResult.data ?? []) as Category[];
 
-    return {
-      topics:     (topicsResult.data ?? []) as TrendingTopic[],
-      categories,
-    };
+    // Only show categories that have at least one published topic
+    const usedCatIds = new Set(allTopics.map(t => (t as any).category_id).filter(Boolean));
+    const categories = allCats.filter(c => usedCatIds.has(c.id));
+
+    return { topics: allTopics, categories };
   } catch {
-    // Supabase env vars not available at build time.
     return { topics: [], categories: [] };
   }
 }
@@ -96,44 +86,5 @@ async function getInitialData(): Promise<{
 export default async function HomePage() {
   const { topics, categories } = await getInitialData();
 
-  return (
-    <div
-      className="site-container"
-      style={{ padding: 'var(--spacing-8) var(--spacing-4) var(--spacing-16)' }}
-    >
-      {/* ── Page header ── */}
-      <header style={{ marginBottom: 'var(--spacing-8)' }}>
-        <h1
-          style={{
-            fontFamily:   'var(--font-heading)',
-            fontSize:     'clamp(28px, 5vw, 48px)',
-            fontWeight:   700,
-            color:        'var(--color-text-primary-light)',
-            marginBottom: 'var(--spacing-2)',
-            lineHeight:   1.15,
-          }}
-        >
-          Trending Now
-        </h1>
-        <p
-          style={{
-            fontSize:   '16px',
-            lineHeight: 1.65,
-            color:      'var(--color-text-secondary-light)',
-            fontFamily: 'var(--font-body)',
-            maxWidth:   640,
-            margin:     0,
-          }}
-        >
-          AI-curated viral stories across technology, politics, sports, entertainment, and more.
-        </p>
-      </header>
-
-      {/* ── Feed (client) ── */}
-      <TopicFeed
-        initialTopics={topics}
-        initialCategories={categories}
-      />
-    </div>
-  );
+  return <HomeFeed initialTopics={topics} initialCategories={categories} />;
 }
