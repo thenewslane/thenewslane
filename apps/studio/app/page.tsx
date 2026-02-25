@@ -346,6 +346,7 @@ function TopicsPage() {
   const [showEdit, setShowEdit]       = useState<Topic | null>(null);
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState('');
+  const [actionError, setActionError] = useState('');
 
   const emptyForm = { title: '', category_id: 1, status: 'draft', summary: '', article: '' };
   const [form, setForm] = useState(emptyForm);
@@ -402,18 +403,22 @@ function TopicsPage() {
 
   const deleteTopic = async (id: string) => {
     if (!confirm('Delete this topic? This cannot be undone.')) return;
+    setActionError('');
     const db = getSupabase();
-    await db.from('trending_topics').delete().eq('id', id);
+    const { error: err } = await db.from('trending_topics').delete().eq('id', id);
+    if (err) { setActionError(`Delete failed: ${err.message} (code: ${err.code})`); return; }
     await load();
   };
 
   const togglePublish = async (id: string, current: string) => {
+    setActionError('');
     const db        = getSupabase();
     const newStatus = current === 'published' ? 'draft' : 'published';
-    await db.from('trending_topics').update({
+    const { error: err } = await db.from('trending_topics').update({
       status: newStatus,
       published_at: newStatus === 'published' ? new Date().toISOString() : null,
     }).eq('id', id);
+    if (err) { setActionError(`Update failed: ${err.message} (code: ${err.code})`); return; }
     await load();
   };
 
@@ -484,6 +489,13 @@ function TopicsPage() {
           <button className="btn btn-primary" onClick={() => { setForm(emptyForm); setShowCreate(true); }}>+ New Topic</button>
         </div>
       </div>
+
+      {actionError && (
+        <div className="error-box" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>⚠ {actionError}</span>
+          <button onClick={() => setActionError('')} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 14, marginLeft: 12 }}>✕</button>
+        </div>
+      )}
 
       {loading ? <Spinner /> : (
         <div className="card" style={{ padding: 0 }}>
