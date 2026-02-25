@@ -41,6 +41,7 @@ type GoogleTag = {
 
 type GoogleSlot = {
   setTargeting?: (key: string, value: string | string[]) => GoogleSlot;
+  addService?: (service: unknown) => GoogleSlot;
 };
 
 /**
@@ -67,17 +68,14 @@ export function AdSlot({ unitPath, sizes, targeting = {}, id }: AdSlotProps) {
     gt.cmd.push(() => {
       if (!slotRef.current) {
         const slot = gt.defineSlot(unitPath, sizes, divId);
-        if (!slot) return;
-        slotRef.current = slot;
-
-        // Apply article-level IAB category targeting for contextual relevance
-        Object.entries(targeting).forEach(([k, v]) => {
-
-	slotRef.current?.setTargeting?.(k, v);
-
-        });
-
-        gt.enableServices();
+        if (slot) {
+          slotRef.current = slot;
+          Object.entries(targeting).forEach(([k, v]) => {
+            slotRef.current?.setTargeting?.(k, v);
+          });
+          slot.addService?.(gt.pubads());
+          gt.enableServices();
+        }
       }
       gt.display(divId);
     });

@@ -26,21 +26,21 @@ export const AD_UNITS = {
   },
 
   /**
-   * 300×250 / 300×600 rectangle shown in the article sidebar on desktop.
+   * 300×250 rectangle shown in the article sidebar on desktop.
    */
   ARTICLE_RECTANGLE: {
-    unitPath: `/${GAM_NETWORK_CODE}/article_rectangle`,
-    sizes:    [[300, 250], [300, 600]] as AdSize[],
+    unitPath: `/${GAM_NETWORK_CODE}/newslane/Newslane_300x250_ATF`,
+    sizes:    [[300, 250]] as AdSize[],
     device:   'desktop',
   },
 
   /**
-   * 300×250 / 336×280 unit inserted between article body and FAQ section.
-   * Shown on all device sizes.
+   * 300×250 ATF unit inserted in article body.
+   * GAM unit: /23173092177/newslane/Newslane_300x250_ATF
    */
   IN_CONTENT: {
-    unitPath: `/${GAM_NETWORK_CODE}/in_content`,
-    sizes:    [[300, 250], [336, 280]] as AdSize[],
+    unitPath: `/${GAM_NETWORK_CODE}/newslane/Newslane_300x250_ATF`,
+    sizes:    [[300, 250]] as AdSize[],
     device:   'all',
   },
 

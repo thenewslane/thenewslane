@@ -529,7 +529,7 @@ export default async function ArticlePage({
                       unitPath={AD_UNITS.IN_CONTENT.unitPath}
                       sizes={AD_UNITS.IN_CONTENT.sizes as [number, number][]}
                       targeting={{ iab_categories: topic.iab_tags ?? [] }}
-                      id="gam-in-content"
+                      id="div-gpt-ad-1772035422456-0"
                     />
                   </div>
                 )}

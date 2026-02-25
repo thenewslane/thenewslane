@@ -65,13 +65,13 @@ export function Footer() {
         <div
           style={{
             display:             'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap:                 'var(--spacing-8)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap:                 'var(--spacing-6) var(--spacing-8)',
             padding:             'var(--spacing-12) 0',
           }}
         >
-          {/* Brand column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)' }}>
+          {/* Brand column — spans full width so Categories + Legal share the row below on mobile */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-3)', gridColumn: '1 / -1' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
               <Logo size={24} />
               <span
