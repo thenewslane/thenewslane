@@ -1,9 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  transpilePackages: [
-    '@platform/types',
-    '@platform/supabase',
-  ],
-};
+const nextConfig = {};
 
 export default nextConfig;

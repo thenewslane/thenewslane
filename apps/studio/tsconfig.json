@@ -15,9 +15,7 @@
     "incremental":        true,
     "plugins":            [{ "name": "next" }],
     "paths": {
-      "@/*":                ["./"],
-      "@platform/types":    ["../../packages/types/index.ts"],
-      "@platform/supabase": ["../../packages/supabase/index.ts"]
+      "@/*": ["./"]
     }
   },
   "include": [

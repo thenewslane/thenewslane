@@ -1,2 +1,3 @@
 apps/studio/.next/
 .env.local
+.vercel
