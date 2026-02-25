@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     slack_webhook_url: str = Field(default="", description="Slack incoming webhook URL for pipeline notifications")
 
     # ── Pipeline tuning ───────────────────────────────────────────────────────
-    pipeline_cron: str = Field(default="*/30 * * * *", description="CRON expression (default: every 30 minutes)")
-    pipeline_interval_minutes: int = Field(default=30, description="Built-in loop interval in minutes (used by --schedule)")
+    pipeline_cron: str = Field(default="0 3 * * *", description="CRON expression (default: once daily at 03:00 UTC)")
+    pipeline_interval_minutes: int = Field(default=1440, description="Built-in loop interval in minutes (used by --schedule; 1440 = once per day)")
     batch_size_limit: int = Field(default=50, description="Max topics to process per batch")
     trends_geo: str = Field(default="US", description="ISO country code for Google Trends geo filter")
     newsapi_max_topics: int = Field(default=20, description="Max topics to query in NewsAPI per batch")
