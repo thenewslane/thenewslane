@@ -46,7 +46,11 @@ export async function GET(req: NextRequest) {
 
   if (!RUNNER_WEBHOOK_URL) {
     return NextResponse.json(
-      { ok: false, error: 'RUNNER_WEBHOOK_URL not configured' },
+      {
+        ok: false,
+        error: 'RUNNER_WEBHOOK_URL not configured',
+        hint: 'Set RUNNER_WEBHOOK_URL in your deployment env (e.g. Vercel) to the agent webhook URL, e.g. https://your-agent-host/run',
+      },
       { status: 503, headers },
     );
   }

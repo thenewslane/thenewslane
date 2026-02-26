@@ -46,15 +46,26 @@ def main() -> None:
     from supabase import create_client
     db = create_client(settings.supabase_url, settings.supabase_service_key)
 
-    rows: list[dict] = (
-        db.table("trending_topics")
-        .select("id, title")
-        .is_("author_name", "null")
-        .execute()
-        .data or []
-    )
+    # Target: rows where author_name is NULL or still holds the migration placeholder
+    all_rows: list[dict] = []
+    for filter_fn in [
+        lambda q: q.is_("author_name", "null"),
+        lambda q: q.eq("author_name", "theNewslane Editorial"),
+    ]:
+        page = filter_fn(
+            db.table("trending_topics").select("id, title")
+        ).execute().data or []
+        all_rows.extend(page)
 
-    print(f"[backfill] {len(rows)} topics without author_name (dry_run={args.dry_run})", flush=True)
+    # Deduplicate by id in case a row matched both filters
+    seen: set[str] = set()
+    rows: list[dict] = []
+    for r in all_rows:
+        if r["id"] not in seen:
+            seen.add(r["id"])
+            rows.append(r)
+
+    print(f"[backfill] {len(rows)} topics to assign personas to (dry_run={args.dry_run})", flush=True)
 
     updated = 0
     for row in rows:
