@@ -196,7 +196,8 @@ const baseUrl   = pubDomain ? `https://${pubDomain}` : 'http://localhost:3000';
 const supabaseHostname = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? (() => { try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname; } catch { return undefined; } })()
   : undefined;
-const authorName = process.env.AUTHOR_NAME ?? 'theNewslane Editorial';
+// Fallback author name for articles that predate the persona system (pre-migration rows)
+const defaultAuthorName = process.env.AUTHOR_NAME ?? 'theNewslane Editorial';
 const defaultDateline = process.env.PUBLICATION_COUNTRY ?? 'United States';
 
 export async function generateMetadata(
@@ -220,6 +221,8 @@ export async function generateMetadata(
     `${pubName} — AI-curated trending news.`;
   const publishedAt = topic.published_at ?? topic.created_at;
 
+  const metaAuthorName = topic.author_name ?? defaultAuthorName;
+
   return {
     title:       topic.title,
     description,
@@ -232,7 +235,7 @@ export async function generateMetadata(
       siteName:          pubName,
       publishedTime:     publishedAt,
       modifiedTime:      topic.updated_at,
-      authors:           [authorName],
+      authors:           [metaAuthorName],
       images:            ogImageUrl
         ? [{ url: ogImageUrl, alt: topic.title, width: DISCOVER_IMAGE_WIDTH, height: DISCOVER_IMAGE_HEIGHT }]
         : [],
@@ -308,6 +311,10 @@ export default async function ArticlePage({
     (topic.video_type === 'kling_generated' && !!topic.video_url);
 
   // ── JSON-LD: NewsArticle (required for Google Discover / rich results) ───
+  // Per-article author (from DB persona) with env var fallback for pre-migration rows
+  const articleAuthorName = topic.author_name ?? defaultAuthorName;
+  const articleHonorific  = topic.author_honorific ?? null;
+
   const authorPageUrl = `${baseUrl}/about`;
   const newsArticleSchema: Record<string, unknown> = {
     '@context':        'https://schema.org',
@@ -318,7 +325,12 @@ export default async function ArticlePage({
     datePublished:     publishedAt,
     dateModified:      topic.updated_at,
     author: [
-      { '@type': 'Person', name: authorName, url: authorPageUrl },
+      {
+        '@type': 'Person',
+        name:    articleAuthorName,
+        url:     authorPageUrl,
+        ...(articleHonorific ? { jobTitle: articleHonorific } : {}),
+      },
       { '@type': 'Organization', name: pubName, url: baseUrl },
     ],
     publisher: {
@@ -404,7 +416,8 @@ export default async function ArticlePage({
         {/* ── Byline ── */}
         <div style={{ marginBottom: 'var(--spacing-6)' }}>
           <AuthorByline
-            authorName={authorName}
+            authorName={articleAuthorName}
+            honorific={articleHonorific}
             publishedAt={publishedAt}
           />
           {topic.updated_at && publishedAt && topic.updated_at > publishedAt && (

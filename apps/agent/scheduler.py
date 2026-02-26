@@ -107,6 +107,41 @@ def run_pipeline_cron(ctx: inngest.Context, step: inngest.Step) -> dict:
         raise
 
 
+# ── Weekly rehash CRON (humanise stale content) ───────────────────────────────
+
+
+@inngest_client.create_function(
+    fn_id="rehash-stale-content",
+    trigger=inngest.TriggerCron(cron="0 2 * * 0"),  # every Sunday at 02:00 UTC
+)
+def rehash_stale_content(ctx: inngest.Context, step: inngest.Step) -> dict:
+    """
+    Weekly freshness pass: rewrite articles older than 7 days (capped at 50 per run).
+
+    Imports the run_rehash_batch helper from scripts/rehash_published.py so the
+    same logic is shared between manual CLI runs and this scheduled job.
+    """
+    def execute() -> dict:
+        from scripts.rehash_published import run_rehash_batch  # noqa: PLC0415
+        return run_rehash_batch(older_than_days=7, limit=50)
+
+    try:
+        result: dict = step.run("rehash-stale", execute)
+        updated = result.get("updated", 0)
+        failed  = result.get("failed", 0)
+        log.info("rehash-stale-content: updated=%d  failed=%d", updated, failed)
+        _send_slack(
+            f"🔄 *theNewslane rehash* — weekly freshness pass\n"
+            f"• Rewritten: {updated} articles\n"
+            f"• Failed: {failed}"
+        )
+        return result
+    except Exception as exc:
+        log.error("rehash-stale-content FAILED: %s", exc)
+        _send_slack(f"❌ *theNewslane rehash* — FAILED\n• Error: {str(exc)[:300]}")
+        raise
+
+
 # ── Manual-trigger function (ad-hoc runs / backfills) ─────────────────────────
 
 
@@ -138,7 +173,7 @@ def create_app() -> Flask:
     inngest.flask.serve(
         app,
         inngest_client,
-        [run_pipeline_cron, run_pipeline_manual],
+        [run_pipeline_cron, run_pipeline_manual, rehash_stale_content],
     )
     return app
 

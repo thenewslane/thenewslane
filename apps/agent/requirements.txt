@@ -67,6 +67,7 @@ python-dotenv==1.2.1
 pytrends==4.9.2
 PyYAML==6.0.3
 RapidFuzz==3.14.3
+scikit-learn>=1.4.0
 realtime==2.28.0
 replicate==1.0.7
 requests==2.32.5

@@ -9,8 +9,10 @@ Includes validation, retry logic, and parallel processing.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
@@ -18,6 +20,24 @@ import anthropic
 
 from config.settings import settings
 from utils.logger import get_logger
+
+# ── Author persona pool ───────────────────────────────────────────────────────
+
+_PERSONAS_PATH = Path(__file__).parent.parent / "data" / "author_personas.json"
+try:
+    _PERSONAS: list[dict] = json.loads(_PERSONAS_PATH.read_text())
+except Exception:
+    _PERSONAS = [{"name": "theNewslane Editorial", "honorific": "Staff Writer"}]
+
+
+def _assign_author_persona(topic_id: str) -> dict:
+    """Deterministically assign an author persona by hashing the topic ID.
+
+    The same topic_id always resolves to the same persona, while the pool
+    distributes evenly across articles.
+    """
+    idx = int(hashlib.md5(topic_id.encode()).hexdigest(), 16) % len(_PERSONAS)
+    return _PERSONAS[idx]
 
 log = get_logger(__name__)
 
@@ -120,7 +140,14 @@ IMPORTANT:
 - Use factual, journalistic tone appropriate for the viral tier
 - Ensure slug is URL-safe (lowercase, hyphens, no special characters)
 - The "dateline" must reflect where the story TAKES PLACE, based on its content — not where the news outlet is based
-- Keep well-known acronyms in ALL CAPS in titles and article text (e.g. POCSO, HC, SC, FIR, BJP, PIL, NASA, FBI, NHS)"""
+- Keep well-known acronyms in ALL CAPS in titles and article text (e.g. POCSO, HC, SC, FIR, BJP, PIL, NASA, FBI, NHS)
+
+ORIGINALITY RULES (mandatory — plagiarism prevention):
+- ALL generated text (seo_title, summary_30w, article, social posts, slug) must be your own original writing. Do NOT copy, lift verbatim, or closely paraphrase any sentence or phrase from the provided source Headlines.
+- Treat the "Headlines" cluster as background signal only — use the underlying facts and story, never the exact wording.
+- EXCEPTION: If a source headline contains a direct quote from a real named individual (e.g. a politician, CEO, scientist, public figure), you MAY reproduce that quote verbatim inside the article body, enclosed in quotation marks and attributed with the person's full name and title. No other text from sources may be reproduced verbatim.
+- The seo_title must be a freshly composed headline that communicates the same story without borrowing any phrasing from the source Headlines.
+- HONORIFICS (mandatory): whenever you mention a real named person in any generated field, always include their correct honorific or professional title on first mention (e.g. Dr. Jane Smith, Senator Mike Lee, Prof. Amartya Sen, CEO Tim Cook, Prime Minister Narendra Modi). Never strip, abbreviate, or omit honorifics from proper names. If uncertain of a specific honorific, use the person's professional role (e.g. "economist Amartya Sen", "technology entrepreneur Elon Musk")."""
 
     def _create_correction_prompt(self, topic: Dict[str, Any], errors: List[str], previous_content: Dict[str, Any]) -> str:
         """Create correction prompt for failed validation."""
@@ -235,10 +262,17 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                 if validation.is_valid:
                     log.debug(f"ContentGenerator: validation passed for topic '{topic_title}'")
                     final_topic = {**topic, **content, "content_generated": True}
+                    # Override raw source headline with Claude's rewritten seo_title (plagiarism safety)
+                    if content.get("seo_title"):
+                        final_topic["title"] = content["seo_title"]
+                    # Assign deterministic author persona
+                    persona = _assign_author_persona(topic_id)
+                    final_topic["author_name"]      = persona["name"]
+                    final_topic["author_honorific"] = persona["honorific"]
                     log.info(f"🔍 DEBUG: Final topic keys after content generation: {list(final_topic.keys())}")
                     log.info(f"🔍 DEBUG: Content fields present: summary_30w={bool(final_topic.get('summary_30w'))}, article={bool(final_topic.get('article'))}")
                     return final_topic
-                
+
                 # Retry once with correction prompt
                 log.warning(f"ContentGenerator: validation failed for topic '{topic_title}', retrying. Errors: {validation.errors}")
 
@@ -249,15 +283,35 @@ Return ONLY a corrected valid JSON object with the same structure, fixing the sp
                     if correction_validation.is_valid:
                         log.info(f"ContentGenerator: correction successful for topic '{topic_title}'")
                         final_topic = {**topic, **corrected_content, "content_generated": True}
+                        # Override raw source headline with Claude's rewritten seo_title (plagiarism safety)
+                        if corrected_content.get("seo_title"):
+                            final_topic["title"] = corrected_content["seo_title"]
+                        # Assign deterministic author persona
+                        persona = _assign_author_persona(topic_id)
+                        final_topic["author_name"]      = persona["name"]
+                        final_topic["author_honorific"] = persona["honorific"]
                         log.info(f"🔍 DEBUG: Final topic keys after correction: {list(final_topic.keys())}")
                         log.info(f"🔍 DEBUG: Content fields present: summary_30w={bool(final_topic.get('summary_30w'))}, article={bool(final_topic.get('article'))}")
                         return final_topic
                     else:
                         log.warning(f"ContentGenerator: correction still invalid for '{topic_title}', using best-effort first attempt. Errors: {correction_validation.errors}")
-                        return {**topic, **content, "content_generated": True}
+                        final_topic = {**topic, **content, "content_generated": True}
+                        # Best-effort: still override title + assign persona
+                        if content.get("seo_title"):
+                            final_topic["title"] = content["seo_title"]
+                        persona = _assign_author_persona(topic_id)
+                        final_topic["author_name"]      = persona["name"]
+                        final_topic["author_honorific"] = persona["honorific"]
+                        return final_topic
                 except Exception as correction_exc:
                     log.warning(f"ContentGenerator: correction failed for '{topic_title}' ({correction_exc}), using best-effort first attempt")
-                    return {**topic, **content, "content_generated": True}
+                    final_topic = {**topic, **content, "content_generated": True}
+                    if content.get("seo_title"):
+                        final_topic["title"] = content["seo_title"]
+                    persona = _assign_author_persona(topic_id)
+                    final_topic["author_name"]      = persona["name"]
+                    final_topic["author_honorific"] = persona["honorific"]
+                    return final_topic
                     
             except Exception as e:
                 log.error(f"ContentGenerator: exception for topic '{topic_title}': {e}")

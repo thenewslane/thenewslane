@@ -164,6 +164,83 @@ def run_pipeline(
     return final_state
 
 
+# ── Run-until-target mode (used by manual trigger) ───────────────────────────
+
+
+def run_pipeline_until(target: int = 5, max_runs: int = 10) -> dict:
+    """
+    Run the pipeline repeatedly until at least `target` stories are published
+    across all runs, or `max_runs` attempts are exhausted.
+
+    Each run goes through the full process: collect → viral → safety →
+    classify → generate → media → publish. Same checks as a cron run.
+
+    Returns a summary dict with total published count and per-run details.
+    """
+    target = max(1, min(20, target))
+    max_runs = max(1, min(20, max_runs))
+
+    log.info("╔══════════════════════════════════════════════════╗")
+    log.info("║  Pipeline: run-until-target mode                 ║")
+    log.info("║  Target : %d stories                              ║", target)
+    log.info("║  Max runs: %d                                     ║", max_runs)
+    log.info("╚══════════════════════════════════════════════════╝")
+
+    total_published = 0
+    run_details: list[dict] = []
+
+    for run_num in range(1, max_runs + 1):
+        log.info("┌─ Run %d/%d (need %d more stories) ──────────────", run_num, max_runs, target - total_published)
+        t0 = time.time()
+
+        try:
+            state = run_pipeline()
+            published = len(state.get("published_topic_ids", [])) + len(state.get("fact_checked_topic_ids", []))
+            errors = len(state.get("errors", []))
+            elapsed = round(time.time() - t0, 1)
+            total_published += published
+
+            run_details.append({
+                "run": run_num,
+                "published": published,
+                "errors": errors,
+                "elapsed_sec": elapsed,
+            })
+
+            log.info("└─ Run %d: published=%d  total=%d/%d  elapsed=%.1fs",
+                      run_num, published, total_published, target, elapsed)
+
+            if total_published >= target:
+                log.info("Target reached: %d/%d stories published after %d run(s)", total_published, target, run_num)
+                break
+
+        except Exception as exc:
+            elapsed = round(time.time() - t0, 1)
+            log.error("└─ Run %d FAILED after %.1fs: %s", run_num, elapsed, exc)
+            run_details.append({
+                "run": run_num,
+                "published": 0,
+                "errors": 1,
+                "elapsed_sec": elapsed,
+                "error": str(exc),
+            })
+
+        # Brief pause between runs to avoid hammering APIs
+        if run_num < max_runs and total_published < target:
+            log.info("Pausing 30s before next run...")
+            time.sleep(30)
+
+    summary = {
+        "target": target,
+        "total_published": total_published,
+        "runs_completed": len(run_details),
+        "target_reached": total_published >= target,
+        "details": run_details,
+    }
+    log.info("Pipeline run-until complete: %s", summary)
+    return summary
+
+
 # ── Built-in continuous scheduler ────────────────────────────────────────────
 
 

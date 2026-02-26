@@ -1,0 +1,12 @@
+[
+  { "name": "Sarah Mitchell",  "honorific": "Senior Correspondent" },
+  { "name": "James Okafor",   "honorific": "World News Editor" },
+  { "name": "Priya Nair",     "honorific": "Technology Editor" },
+  { "name": "David Chen",     "honorific": "Business Correspondent" },
+  { "name": "Amara Diallo",   "honorific": "International Reporter" },
+  { "name": "Lena Hoffmann",  "honorific": "Science Writer" },
+  { "name": "Carlos Mendez",  "honorific": "Sports Editor" },
+  { "name": "Sophie Laurent", "honorific": "Culture & Arts Correspondent" },
+  { "name": "Rajiv Sharma",   "honorific": "Senior Analyst" },
+  { "name": "Emma Thornton",  "honorific": "Guest Author" }
+]

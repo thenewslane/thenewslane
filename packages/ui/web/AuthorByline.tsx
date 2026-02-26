@@ -3,11 +3,12 @@ import { formatTimeAgo } from './utils';
 
 export interface AuthorBylineProps {
   authorName:  string;
-  publishedAt: string; // ISO-8601
-  aboutHref?:  string; // link to about/author page
+  publishedAt: string;       // ISO-8601
+  honorific?:  string | null; // e.g. "Senior Correspondent", "Technology Editor"
+  aboutHref?:  string;       // link to about/author page
 }
 
-export function AuthorByline({ authorName, publishedAt, aboutHref = '/about' }: AuthorBylineProps) {
+export function AuthorByline({ authorName, publishedAt, honorific, aboutHref = '/about' }: AuthorBylineProps) {
   return (
     <div
       style={{
@@ -30,6 +31,17 @@ export function AuthorByline({ authorName, publishedAt, aboutHref = '/about' }: 
         >
           {authorName}
         </a>
+        {honorific && (
+          <span
+            style={{
+              color:      'var(--color-text-muted-light)',
+              fontWeight: 400,
+              marginLeft: '4px',
+            }}
+          >
+            · {honorific}
+          </span>
+        )}
       </span>
 
       <span aria-hidden style={{ opacity: 0.35 }}>·</span>

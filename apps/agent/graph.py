@@ -435,13 +435,21 @@ def _publish_one_topic_sync(topic: dict[str, Any], batch_id: str) -> tuple[str |
 
     # Publish immediately with fact_check=yes (fact-check logic paused; no draft step).
     # summary/article are guaranteed non-empty here (we skip above otherwise).
+    # Title: prefer Claude's rewritten seo_title (plagiarism-safe) over raw source headline.
+    # content_generation_node already sets topic["title"] = seo_title, but this is a
+    # defence-in-depth guard in case the topic bypassed content generation.
+    resolved_title = (
+        topic.get("seo_title") or topic.get("title") or topic.get("keyword", "")
+    )
     patch: dict[str, Any] = {
         "status": "published",
         "fact_check": "yes",
         "published_at": now_iso,
         "batch_id": batch_id,
         "slug": slug,
-        "title": topic.get("title") or topic.get("keyword", ""),
+        "title": resolved_title,
+        "author_name":      topic.get("author_name"),
+        "author_honorific": topic.get("author_honorific"),
         "category_id": category_id,
         "viral_tier": topic.get("viral_tier"),
         "viral_score": topic.get("viral_score"),

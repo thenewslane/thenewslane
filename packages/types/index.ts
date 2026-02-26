@@ -106,6 +106,10 @@ export interface TrendingTopic {
   viral_tier:       1 | 2 | 3 | null;
   viral_score:      number | null;    // 0.0000–1.0000
 
+  // Author persona (assigned deterministically per article by the pipeline)
+  author_name:      string | null;
+  author_honorific: string | null;
+
   // Lifecycle
   status:           TopicStatus;
   fact_check:       'yes' | 'no';   // set to 'yes' after fact-check agent verification
