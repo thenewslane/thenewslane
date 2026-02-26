@@ -61,16 +61,23 @@ def _validate_secret() -> bool:
     return True
 
 
-@app.route("/run", methods=["POST"])
-@app.route("/", methods=["POST"])
+@app.route("/run", methods=["GET", "POST", "OPTIONS"])
+@app.route("/", methods=["GET", "POST", "OPTIONS"])
 def run_pipeline_webhook():
     """
-    Accept POST to trigger one pipeline run. Returns 202 immediately.
-
-    Optional JSON body:
-      { "min_publish": 5 }  — run repeatedly until N stories are published
+    POST: trigger pipeline run (returns 202).
+    GET/OPTIONS: hint and CORS preflight.
     """
     global _pipeline_running
+
+    if request.method == "OPTIONS":
+        return "", 204
+    if request.method == "GET":
+        return jsonify({
+            "ok": True,
+            "message": "POST to this URL to trigger the pipeline",
+            "body": {"min_publish": 5},
+        }), 200
 
     if not _validate_secret():
         log.warning("Webhook rejected: invalid or missing Authorization")

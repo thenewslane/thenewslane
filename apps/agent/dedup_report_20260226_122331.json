@@ -1,0 +1,944 @@
+{
+  "total_clusters": 116,
+  "dry_run": true,
+  "timestamp": "2026-02-26T12:23:31.502242+00:00",
+  "actions": [
+    {
+      "rejected_id": "452ffe13-8525-4fb9-8d69-75c442d4286e",
+      "winner_id": "6f470800-03c8-4c8a-9f72-3a75050aee17",
+      "rejected_title": "Trump Administration Plans To Take Homan\u2019S Minneapolis Immigration Pla",
+      "winner_title": "Trump Administration Plans To Take Homan\u2019S Minneapolis Immigration Pla"
+    },
+    {
+      "rejected_id": "63bc84f4-05df-4ae1-a86d-80278c7d7c42",
+      "winner_id": "6f470800-03c8-4c8a-9f72-3a75050aee17",
+      "rejected_title": "Trump Administration Plans To Take Homan\u2019S Minneapolis Immigration Pla",
+      "winner_title": "Trump Administration Plans To Take Homan\u2019S Minneapolis Immigration Pla"
+    },
+    {
+      "rejected_id": "10d40d97-9bf5-476f-a740-e96aea2bc504",
+      "winner_id": "e45a7b1a-ae1a-42b4-90a0-7d8d1a318636",
+      "rejected_title": "\u2018Landman\u2019S Billy Bob Thornton Tells Great Robert Duvall Stories & Divu",
+      "winner_title": "\u2018Landman\u2019S Billy Bob Thornton Tells Great Robert Duvall Stories & Divu"
+    },
+    {
+      "rejected_id": "098f774d-4003-4340-9935-5028de579a9c",
+      "winner_id": "e45a7b1a-ae1a-42b4-90a0-7d8d1a318636",
+      "rejected_title": "\u2018Landman\u2019S Billy Bob Thornton Tells Great Robert Duvall Stories & Divu",
+      "winner_title": "\u2018Landman\u2019S Billy Bob Thornton Tells Great Robert Duvall Stories & Divu"
+    },
+    {
+      "rejected_id": "eb2433cf-3ae2-4642-9eb1-a5702955b5d5",
+      "winner_id": "e45a7b1a-ae1a-42b4-90a0-7d8d1a318636",
+      "rejected_title": "\u2018Landman\u2019S Billy Bob Thornton Tells Great Robert Duvall Stories & Divu",
+      "winner_title": "\u2018Landman\u2019S Billy Bob Thornton Tells Great Robert Duvall Stories & Divu"
+    },
+    {
+      "rejected_id": "ec6bb29f-45a0-42d4-8172-f5832e29e18b",
+      "winner_id": "58e6b985-bcb8-4ea5-b523-0be829859888",
+      "rejected_title": "The James Webb Space Telescope Just Mapped Auroras On Uranus In 3D For",
+      "winner_title": "The James Webb Space Telescope Just Mapped Auroras On Uranus In 3D For"
+    },
+    {
+      "rejected_id": "3b969b7d-3b66-4971-8bb6-574d4b590971",
+      "winner_id": "58e6b985-bcb8-4ea5-b523-0be829859888",
+      "rejected_title": "The James Webb Space Telescope Just Mapped Auroras On Uranus In 3D For",
+      "winner_title": "The James Webb Space Telescope Just Mapped Auroras On Uranus In 3D For"
+    },
+    {
+      "rejected_id": "c7d68a11-5e25-4139-8d06-a480d212798e",
+      "winner_id": "53dd3cb8-a757-40ed-a0c2-ece73255e01b",
+      "rejected_title": "Valve Should Release Its New Steam Controller Early While We'Re Waitin",
+      "winner_title": "Valve Should Release Its New Steam Controller Early While We'Re Waitin"
+    },
+    {
+      "rejected_id": "98968c50-28ca-4513-b55a-7a1404ec2a62",
+      "winner_id": "53dd3cb8-a757-40ed-a0c2-ece73255e01b",
+      "rejected_title": "Valve Should Release Its New Steam Controller Early While We'Re Waitin",
+      "winner_title": "Valve Should Release Its New Steam Controller Early While We'Re Waitin"
+    },
+    {
+      "rejected_id": "66e48f99-d782-4665-8077-aef7a0152ff5",
+      "winner_id": "76e2c61e-6b4a-4fcf-b03d-eec042eb765c",
+      "rejected_title": "Morning Report | Mikey Musumeci Fires Back At Dillon Danis Over Commen",
+      "winner_title": "Morning Report | Mikey Musumeci Fires Back At Dillon Danis Over Commen"
+    },
+    {
+      "rejected_id": "578edb11-71d9-49c8-a610-6cc04a04e075",
+      "winner_id": "362aedb9-c875-45fd-a993-4c43503de245",
+      "rejected_title": "We Installed A Single Turnstile To Feel Secure",
+      "winner_title": "We Installed A Single Turnstile To Feel Secure"
+    },
+    {
+      "rejected_id": "a11e9383-b9a3-4af9-8a88-7b445353530c",
+      "winner_id": "17db0512-1e2e-41b9-b53b-7345b879150b",
+      "rejected_title": "Global Temperatures Dipped In 2025 But More Heat Records On Way, Scien",
+      "winner_title": "Global Temperatures Dipped In 2025 But More Heat Records On Way, Scien"
+    },
+    {
+      "rejected_id": "13e3a472-3a40-42ef-ae82-5193de2dadae",
+      "winner_id": "3ba0c751-dd9c-45af-9c28-339e6112b342",
+      "rejected_title": "Independent Report Sharply Criticizes Nasa Management, Boeing For Trou",
+      "winner_title": "Independent report sharply criticizes NASA management, Boeing for trou"
+    },
+    {
+      "rejected_id": "7a95d38a-8311-43e3-ab8e-2994d56e2b1a",
+      "winner_id": "3ba0c751-dd9c-45af-9c28-339e6112b342",
+      "rejected_title": "Independent Report Sharply Criticizes Nasa Management, Boeing For Trou",
+      "winner_title": "Independent report sharply criticizes NASA management, Boeing for trou"
+    },
+    {
+      "rejected_id": "b8d03573-534c-47a6-884b-e4e7ed2559a2",
+      "winner_id": "d24eca5f-67c8-4144-886a-2856ecff8bb0",
+      "rejected_title": "Nasa Telescope Spots A Young Sun-Like Star Inflating Its Astrosphere",
+      "winner_title": "NASA Telescope Spots a Young Sun-Like Star Inflating Its Astrosphere"
+    },
+    {
+      "rejected_id": "6fb13235-6b33-4c6b-8b91-f7f2a02ccf3f",
+      "winner_id": "8a0d834d-f2d1-498d-a09d-6dc44701c2cd",
+      "rejected_title": "Show Hn: A Real-Time Strategy Game That Ai Agents Can Play",
+      "winner_title": "Show HN: A real-time strategy game that AI agents can play"
+    },
+    {
+      "rejected_id": "5bbc223f-a7c7-4b6b-8143-5b8f5bd312ff",
+      "winner_id": "833df439-d814-4141-acb6-56224c46bbc0",
+      "rejected_title": "Israeli Settlers Kill 19-Year-Old Palestinian American, Officials And ",
+      "winner_title": "Israeli Settlers Kill 19-Year-Old Palestinian American, Officials And "
+    },
+    {
+      "rejected_id": "8c2fad3f-50d7-44ef-a600-97ed43ec88e5",
+      "winner_id": "833df439-d814-4141-acb6-56224c46bbc0",
+      "rejected_title": "Israeli Settlers Kill 19-Year-Old Palestinian American, Officials And ",
+      "winner_title": "Israeli Settlers Kill 19-Year-Old Palestinian American, Officials And "
+    },
+    {
+      "rejected_id": "3fbf69ab-cf01-426f-b6c2-b84da6a558d3",
+      "winner_id": "4e02e269-dd6f-4466-b0ba-d77d46db6a01",
+      "rejected_title": "4 Journalists Detained In Cameroon Reporting On Trump\u2019S Deportations",
+      "winner_title": "4 Journalists Detained In Cameroon Reporting On Trump\u2019S Deportations"
+    },
+    {
+      "rejected_id": "3028f951-0af3-40c3-a838-bb253df3b5ef",
+      "winner_id": "4e02e269-dd6f-4466-b0ba-d77d46db6a01",
+      "rejected_title": "4 Journalists Detained In Cameroon Reporting On Trump\u2019S Deportations",
+      "winner_title": "4 Journalists Detained In Cameroon Reporting On Trump\u2019S Deportations"
+    },
+    {
+      "rejected_id": "75faff58-82d0-4d78-b937-bf195e6d4281",
+      "winner_id": "e0e6b2c2-18d0-45c8-a362-5e0f9262d44a",
+      "rejected_title": "Google\u2019S New Gemini Pro Model Has Record Benchmark Scores \u2014 Again",
+      "winner_title": "Google\u2019S New Gemini Pro Model Has Record Benchmark Scores \u2014 Again"
+    },
+    {
+      "rejected_id": "377880b4-96ff-4c1b-b76b-77e7148b38bb",
+      "winner_id": "e0e6b2c2-18d0-45c8-a362-5e0f9262d44a",
+      "rejected_title": "Google\u2019S New Gemini Pro Model Has Record Benchmark Scores \u2014 Again",
+      "winner_title": "Google\u2019S New Gemini Pro Model Has Record Benchmark Scores \u2014 Again"
+    },
+    {
+      "rejected_id": "fcae18e4-4b87-437b-b36c-9e6e5bd2de38",
+      "winner_id": "21c6a95c-7766-451a-954e-16c494908088",
+      "rejected_title": "William Foege Obituary: Epidemiologist In Smallpox Success",
+      "winner_title": "William Foege Obituary: Epidemiologist In Smallpox Success"
+    },
+    {
+      "rejected_id": "57e002bd-3d14-43cc-b38f-83a53186469f",
+      "winner_id": "21c6a95c-7766-451a-954e-16c494908088",
+      "rejected_title": "William Foege Obituary: Epidemiologist In Smallpox Success",
+      "winner_title": "William Foege Obituary: Epidemiologist In Smallpox Success"
+    },
+    {
+      "rejected_id": "11f49893-a2cc-4025-b5aa-acf6b7677ffa",
+      "winner_id": "9cf07e59-8849-42e2-a3e2-1a44a56a99ef",
+      "rejected_title": "Inter Miami Cf Acquires International Roster Slot From New England Rev",
+      "winner_title": "Inter Miami Cf Acquires International Roster Slot From New England Rev"
+    },
+    {
+      "rejected_id": "e83dbd75-4830-4e67-a4ec-51e59118269a",
+      "winner_id": "9cf07e59-8849-42e2-a3e2-1a44a56a99ef",
+      "rejected_title": "Inter Miami Cf Acquires International Roster Slot From New England Rev",
+      "winner_title": "Inter Miami Cf Acquires International Roster Slot From New England Rev"
+    },
+    {
+      "rejected_id": "c478ce28-a89d-4dbf-b7de-66d41235e4c7",
+      "winner_id": "ac37f701-de48-4069-8d1e-28fc3e983e15",
+      "rejected_title": "Hubble Telescope Discovers Rare Galaxy That Is 99% Dark Matter",
+      "winner_title": "Hubble Telescope Discovers Rare Galaxy That Is 99% Dark Matter"
+    },
+    {
+      "rejected_id": "97512c54-98ea-464c-b1dd-f398eeadaac4",
+      "winner_id": "ac37f701-de48-4069-8d1e-28fc3e983e15",
+      "rejected_title": "Hubble Telescope Discovers Rare Galaxy That Is 99% Dark Matter",
+      "winner_title": "Hubble Telescope Discovers Rare Galaxy That Is 99% Dark Matter"
+    },
+    {
+      "rejected_id": "953ee3cd-b986-45ce-952c-54a9d8620783",
+      "winner_id": "ac37f701-de48-4069-8d1e-28fc3e983e15",
+      "rejected_title": "Hubble Telescope Discovers Rare Galaxy That Is 99% Dark Matter",
+      "winner_title": "Hubble Telescope Discovers Rare Galaxy That Is 99% Dark Matter"
+    },
+    {
+      "rejected_id": "06f2cae4-eaa8-43d0-83c7-6b93353e9c7b",
+      "winner_id": "ea227ae6-5280-4ea3-a81d-e5993c06debb",
+      "rejected_title": "This Odd-Looking New Spinosaurus Is Reviving An Age-Old Debate",
+      "winner_title": "This Odd-Looking New Spinosaurus Is Reviving An Age-Old Debate"
+    },
+    {
+      "rejected_id": "ed680273-eca2-4520-99c4-3178e7b26492",
+      "winner_id": "ea227ae6-5280-4ea3-a81d-e5993c06debb",
+      "rejected_title": "This Odd-Looking New Spinosaurus Is Reviving An Age-Old Debate",
+      "winner_title": "This Odd-Looking New Spinosaurus Is Reviving An Age-Old Debate"
+    },
+    {
+      "rejected_id": "9aefbd23-468a-42c9-bc96-0a0eb20b959a",
+      "winner_id": "49d75e1e-71d8-40ce-9714-de45006034a2",
+      "rejected_title": "Cats Give Genetic Clues To Better Cancer Treatments",
+      "winner_title": "Cats Give Genetic Clues To Better Cancer Treatments"
+    },
+    {
+      "rejected_id": "454c7466-4261-4ecc-84d3-2646f81b7a41",
+      "winner_id": "49d75e1e-71d8-40ce-9714-de45006034a2",
+      "rejected_title": "Cats Give Genetic Clues To Better Cancer Treatments",
+      "winner_title": "Cats Give Genetic Clues To Better Cancer Treatments"
+    },
+    {
+      "rejected_id": "6061666e-71c3-422d-afc3-4f8a003e38f2",
+      "winner_id": "9acde52b-0619-4e2b-87e4-f37fd8958168",
+      "rejected_title": "Whatsapp Launches One Of Its Most Requested Features For Groups",
+      "winner_title": "Whatsapp Launches One Of Its Most Requested Features For Groups"
+    },
+    {
+      "rejected_id": "0ad7830f-ee08-48d9-a8c1-f7f95a858775",
+      "winner_id": "9acde52b-0619-4e2b-87e4-f37fd8958168",
+      "rejected_title": "Whatsapp Launches One Of Its Most Requested Features For Groups",
+      "winner_title": "Whatsapp Launches One Of Its Most Requested Features For Groups"
+    },
+    {
+      "rejected_id": "86dd457f-3852-4691-95d7-466b00d7980d",
+      "winner_id": "4c78ad83-1dab-41eb-8efa-8943ba6087e8",
+      "rejected_title": "Manon Bannerman Taking Temporary Hiatus From Katseye",
+      "winner_title": "Manon Bannerman Taking Temporary Hiatus From Katseye"
+    },
+    {
+      "rejected_id": "5688b3f7-c9bd-48be-89c5-04be12dbd2e8",
+      "winner_id": "6644017b-96c8-4c5b-93a2-9f788f334484",
+      "rejected_title": "Mayweather To Unretire, Resume Boxing After Tyson Exhibition",
+      "winner_title": "Mayweather To Unretire, Resume Boxing After Tyson Exhibition"
+    },
+    {
+      "rejected_id": "f821de75-9e6d-4d73-8f45-7ad58918871e",
+      "winner_id": "3ee14d00-6ec8-467e-a0d2-77e3fac470d0",
+      "rejected_title": "What Worked And What Didn'T With A Cellphone Ban At A Kentucky School",
+      "winner_title": "What Worked And What Didn'T With A Cellphone Ban At A Kentucky School"
+    },
+    {
+      "rejected_id": "59d69de2-c2d3-4365-9821-a792c2b2c805",
+      "winner_id": "c190edb7-3bbd-4f79-9dce-22a1b843846d",
+      "rejected_title": "Samsung Reveals Bixby Reboot With Device Controls, Ai, Arrives In One ",
+      "winner_title": "Samsung Reveals Bixby Reboot With Device Controls, Ai, Arrives In One "
+    },
+    {
+      "rejected_id": "dc65bd73-d741-47f1-b5e1-2ac157231875",
+      "winner_id": "c190edb7-3bbd-4f79-9dce-22a1b843846d",
+      "rejected_title": "Samsung Reveals Bixby Reboot With Device Controls, Ai, Arrives In One ",
+      "winner_title": "Samsung Reveals Bixby Reboot With Device Controls, Ai, Arrives In One "
+    },
+    {
+      "rejected_id": "faf5478e-9b76-4b80-b7ee-299ba2ad3681",
+      "winner_id": "608de018-1724-4a7a-9b83-af2e7ca60e46",
+      "rejected_title": "\u2018Venom\u2019 Animated Movie In The Works With \u2018Final Destination\u2019 Filmmaker",
+      "winner_title": "\u2018Venom\u2019 Animated Movie In The Works With \u2018Final Destination\u2019 Filmmaker"
+    },
+    {
+      "rejected_id": "a0e5f02d-49a3-4b87-9193-7d1f9f1ce54f",
+      "winner_id": "ab3fb76a-e9d7-4617-9ecf-46ec5855264f",
+      "rejected_title": "House Speaker Johnson Rejects Request For Jesse Jackson To Lie In Hono",
+      "winner_title": "House Speaker Johnson Rejects Request For Jesse Jackson To Lie In Hono"
+    },
+    {
+      "rejected_id": "d4e17056-7e63-4269-bfad-9d20714650e8",
+      "winner_id": "49134dfb-a4c6-4528-b28e-4b669bc9d389",
+      "rejected_title": "Stock Futures Decline After Weaker-Than-Expected Gdp Report: Live Upda",
+      "winner_title": "Stock Futures Decline After Weaker-Than-Expected Gdp Report: Live Upda"
+    },
+    {
+      "rejected_id": "a75d3d46-e2b7-499a-9774-60f890069db0",
+      "winner_id": "0d66fecc-06df-40e7-b52b-43dfeae9a24f",
+      "rejected_title": "62-Year-Old Fast-Food Mexican Chain Quietly Closing Restaurants",
+      "winner_title": "62-Year-Old Fast-Food Mexican Chain Quietly Closing Restaurants"
+    },
+    {
+      "rejected_id": "e69be9c9-70f1-46d0-b437-b8ddab929e08",
+      "winner_id": "fe8f10ed-bf40-4d23-881b-5629a9dab7d5",
+      "rejected_title": "Facing A Mental Health Crisis, An Nj School Pulled A Beloved Novel Fro",
+      "winner_title": "Facing A Mental Health Crisis, An Nj School Pulled A Beloved Novel Fro"
+    },
+    {
+      "rejected_id": "8ccfed31-4b4a-481d-b980-46ba3928b07a",
+      "winner_id": "fe8f10ed-bf40-4d23-881b-5629a9dab7d5",
+      "rejected_title": "Facing A Mental Health Crisis, An Nj School Pulled A Beloved Novel Fro",
+      "winner_title": "Facing A Mental Health Crisis, An Nj School Pulled A Beloved Novel Fro"
+    },
+    {
+      "rejected_id": "c820a285-ce1e-4dfe-b576-eeddda406cee",
+      "winner_id": "8979d2dd-5df1-41e4-8805-4f895f5737fc",
+      "rejected_title": "Trump Gets His Board Of Peace, Even As Bigger Countries Steer Clear",
+      "winner_title": "Trump Gets His Board Of Peace, Even As Bigger Countries Steer Clear"
+    },
+    {
+      "rejected_id": "fb541121-5c50-4a9f-88f4-b2999b005b19",
+      "winner_id": "16624990-5a27-4549-9f8c-25c15e4d74d1",
+      "rejected_title": "Pce Data, Amazon Dethrones Walmart, Silicon Valley'S 'Vanlords' And Mo",
+      "winner_title": "Pce Data, Amazon Dethrones Walmart, Silicon Valley'S 'Vanlords' And Mo"
+    },
+    {
+      "rejected_id": "849906e0-0747-4e12-a7b2-0d6a62b7612a",
+      "winner_id": "22b6a8ab-09b3-4083-8ca7-4971f827084b",
+      "rejected_title": "Palm Beach Airport To Be Named Donald J. Trump International",
+      "winner_title": "Palm Beach Airport To Be Named Donald J. Trump International"
+    },
+    {
+      "rejected_id": "8e37de8c-a5cf-4666-b848-62e1df568ed5",
+      "winner_id": "b1cc6430-1af1-4c9d-9c36-8f85311811e0",
+      "rejected_title": "Bath & Body Works Starts Selling On Amazon As More Brands Embrace Its ",
+      "winner_title": "Bath & Body Works Starts Selling On Amazon As More Brands Embrace Its "
+    },
+    {
+      "rejected_id": "d5521fcb-46c9-4c84-89f9-2060021e8ee7",
+      "winner_id": "ce1a909c-3c77-4416-810f-15f417e30193",
+      "rejected_title": "Scientists Worry About Lasting Damage From Potomac Sewage Spill",
+      "winner_title": "Scientists Worry About Lasting Damage From Potomac Sewage Spill"
+    },
+    {
+      "rejected_id": "f6fdb51b-2d35-49ae-950c-60d7deff72d1",
+      "winner_id": "5bbc4218-2b18-4db7-a5f2-7d325703c59b",
+      "rejected_title": "Snooki Reveals Cervical Cancer Diagnosis, Urges Fans To Get Pap Smears",
+      "winner_title": "Snooki Reveals Cervical Cancer Diagnosis, Urges Fans To Get Pap Smears"
+    },
+    {
+      "rejected_id": "4fe05ae9-14bc-4b67-bc49-17ed5c0a5916",
+      "winner_id": "1bc575d4-ecff-4557-bf1a-fa2c4c015ee6",
+      "rejected_title": "Judge Forced To Slash Sf Jury Pool Over Hate For Elon Musk",
+      "winner_title": "Judge Forced To Slash Sf Jury Pool Over Hate For Elon Musk"
+    },
+    {
+      "rejected_id": "69ee9550-7c07-4168-995f-b6ffda22ce34",
+      "winner_id": "73094bb1-acff-4aae-b05f-c8e4ca616d0f",
+      "rejected_title": "\u201cNetflix Does Not Need This Deal\u201d: Netflix Stock (Nasdaq:Nflx) Notches",
+      "winner_title": "\u201cNetflix Does Not Need This Deal\u201d: Netflix Stock (Nasdaq:Nflx) Notches"
+    },
+    {
+      "rejected_id": "a975cc8c-2363-486e-9281-8485ef09baa3",
+      "winner_id": "7f12c39f-731b-423e-b3c1-1c8bff7cb978",
+      "rejected_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi",
+      "winner_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi"
+    },
+    {
+      "rejected_id": "f173ba22-6f02-4f71-8c10-e796ef33abf5",
+      "winner_id": "7f12c39f-731b-423e-b3c1-1c8bff7cb978",
+      "rejected_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi",
+      "winner_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi"
+    },
+    {
+      "rejected_id": "4e05a5c9-24d9-44f6-bee6-8012d84edd28",
+      "winner_id": "7f12c39f-731b-423e-b3c1-1c8bff7cb978",
+      "rejected_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi",
+      "winner_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi"
+    },
+    {
+      "rejected_id": "3d57eb07-733b-486d-91c4-5a2fc4d24baf",
+      "winner_id": "7f12c39f-731b-423e-b3c1-1c8bff7cb978",
+      "rejected_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi",
+      "winner_title": "See Where Snow Could Be Measured In Inches \u2014 Or Feet \u2014 In The East Thi"
+    },
+    {
+      "rejected_id": "e8646cc6-1d17-4d27-a71c-46b13cb593e2",
+      "winner_id": "289ec375-18c8-46e9-9943-3a06f22bf54e",
+      "rejected_title": "Ubisoft Confirms A Lot Of New Far Cry And Assassin'S Creed Games Are I",
+      "winner_title": "Ubisoft Confirms A Lot Of New Far Cry And Assassin'S Creed Games Are I"
+    },
+    {
+      "rejected_id": "ee07c7a4-7cf6-4c34-945d-6a0969564c1b",
+      "winner_id": "07b91cb5-05ee-4ade-86d6-88a592fa0bb0",
+      "rejected_title": "Norway Wins Its 17Th Gold Medal, Breaking Record For Most Golds Won In",
+      "winner_title": "Norway Wins Its 17Th Gold Medal, Breaking Record For Most Golds Won In"
+    },
+    {
+      "rejected_id": "d5ecf0ae-77ce-4779-9ea9-45e967c057e6",
+      "winner_id": "6dd2ff13-d9bd-4126-a02e-579b59cb5e5b",
+      "rejected_title": "Openai Plans To Price Smart Speaker At $200 To $300, As Ai Device Team",
+      "winner_title": "Openai Plans To Price Smart Speaker At $200 To $300, As Ai Device Team"
+    },
+    {
+      "rejected_id": "5444ca71-26c1-4d83-880c-21613dfd6fe4",
+      "winner_id": "3d40092d-d009-4b4a-b944-f4f39b71e7c3",
+      "rejected_title": "Oddest Moments From India\u2019S Ai Summit: Missing Stars, Traffic Chaos An",
+      "winner_title": "Oddest Moments From India\u2019S Ai Summit: Missing Stars, Traffic Chaos An"
+    },
+    {
+      "rejected_id": "616222d5-71ef-49b8-8f8c-29a081ef8c15",
+      "winner_id": "3d40092d-d009-4b4a-b944-f4f39b71e7c3",
+      "rejected_title": "Oddest Moments From India\u2019S Ai Summit: Missing Stars, Traffic Chaos An",
+      "winner_title": "Oddest Moments From India\u2019S Ai Summit: Missing Stars, Traffic Chaos An"
+    },
+    {
+      "rejected_id": "cf074a6a-f352-450e-9509-ac3a4b04e26f",
+      "winner_id": "f93c1f2b-1340-49a6-a9e2-28aa3f20410c",
+      "rejected_title": "Potential Blizzard In Boston Could Drop A Foot Of Snow Or More Monday,",
+      "winner_title": "Potential Blizzard In Boston Could Drop A Foot Of Snow Or More Monday,"
+    },
+    {
+      "rejected_id": "a9d6613b-e463-4a6d-875b-7bad440616a0",
+      "winner_id": "f93c1f2b-1340-49a6-a9e2-28aa3f20410c",
+      "rejected_title": "Potential Blizzard In Boston Could Drop A Foot Of Snow Or More Monday,",
+      "winner_title": "Potential Blizzard In Boston Could Drop A Foot Of Snow Or More Monday,"
+    },
+    {
+      "rejected_id": "b8aab475-60de-4358-8e93-6811aea0b33f",
+      "winner_id": "b783a2b2-0f87-452d-85ad-4b80d999e499",
+      "rejected_title": "Trump Adminstration Rolls Back Mercury Rules For Coal-Fired Power Plan",
+      "winner_title": "Trump Adminstration Rolls Back Mercury Rules For Coal-Fired Power Plan"
+    },
+    {
+      "rejected_id": "cca67e23-c9f2-49ff-a5d8-2639f77cd3be",
+      "winner_id": "b783a2b2-0f87-452d-85ad-4b80d999e499",
+      "rejected_title": "Trump Adminstration Rolls Back Mercury Rules For Coal-Fired Power Plan",
+      "winner_title": "Trump Adminstration Rolls Back Mercury Rules For Coal-Fired Power Plan"
+    },
+    {
+      "rejected_id": "e99d8888-efb6-42a9-9ba2-6f831fd6db39",
+      "winner_id": "fd7051ac-8f6a-40c4-a484-5bb5c456045e",
+      "rejected_title": "2026 Draft: Ten Debate-Worthy Prospects To Track At The Nfl Combine",
+      "winner_title": "2026 Draft: Ten Debate-Worthy Prospects To Track At The Nfl Combine"
+    },
+    {
+      "rejected_id": "37694aea-7be2-4b46-9d6d-5f84fc7f29ab",
+      "winner_id": "fd7051ac-8f6a-40c4-a484-5bb5c456045e",
+      "rejected_title": "2026 Draft: Ten Debate-Worthy Prospects To Track At The Nfl Combine",
+      "winner_title": "2026 Draft: Ten Debate-Worthy Prospects To Track At The Nfl Combine"
+    },
+    {
+      "rejected_id": "ad97cc85-5440-4f7d-8b46-e5904292edbc",
+      "winner_id": "6496e050-7d10-4517-a05b-0d032798ab0b",
+      "rejected_title": "Give Punch A Break! Zoo Responds To Heartbreaking Video Of Baby Monkey",
+      "winner_title": "Give Punch A Break! Zoo Responds To Heartbreaking Video Of Baby Monkey"
+    },
+    {
+      "rejected_id": "e657a416-cb91-4d1d-992c-6eb52e3ec843",
+      "winner_id": "6496e050-7d10-4517-a05b-0d032798ab0b",
+      "rejected_title": "Give Punch A Break! Zoo Responds To Heartbreaking Video Of Baby Monkey",
+      "winner_title": "Give Punch A Break! Zoo Responds To Heartbreaking Video Of Baby Monkey"
+    },
+    {
+      "rejected_id": "72bc7f9a-40bd-422a-8a5f-60e8d72d6635",
+      "winner_id": "4261c1fa-05b1-4e20-9c23-98cfe333ba52",
+      "rejected_title": "Scoop: Nj, Ny Reps To Oppose Iran War Powers Resolution In House",
+      "winner_title": "Scoop: Nj, Ny Reps To Oppose Iran War Powers Resolution In House"
+    },
+    {
+      "rejected_id": "25df3bd4-d77d-4eba-9576-75ad399853aa",
+      "winner_id": "82789c13-b7c1-402d-bc8c-a6df40dd8d01",
+      "rejected_title": "Gennaro Filice 2026 Nfl Mock Draft 1.0: Jeremiyah Love Cracks Top Five",
+      "winner_title": "Gennaro Filice 2026 Nfl Mock Draft 1.0: Jeremiyah Love Cracks Top Five"
+    },
+    {
+      "rejected_id": "f322478c-7ef1-49c7-8cdc-3548269c3a8a",
+      "winner_id": "82789c13-b7c1-402d-bc8c-a6df40dd8d01",
+      "rejected_title": "Gennaro Filice 2026 Nfl Mock Draft 1.0: Jeremiyah Love Cracks Top Five",
+      "winner_title": "Gennaro Filice 2026 Nfl Mock Draft 1.0: Jeremiyah Love Cracks Top Five"
+    },
+    {
+      "rejected_id": "1d11b6f6-d88a-4351-b299-99e7b5be7b34",
+      "winner_id": "82789c13-b7c1-402d-bc8c-a6df40dd8d01",
+      "rejected_title": "Gennaro Filice 2026 Nfl Mock Draft 1.0: Jeremiyah Love Cracks Top Five",
+      "winner_title": "Gennaro Filice 2026 Nfl Mock Draft 1.0: Jeremiyah Love Cracks Top Five"
+    },
+    {
+      "rejected_id": "611a642c-7c51-4af7-a8ee-86479d56068c",
+      "winner_id": "ea12db0a-20b5-4658-b4c4-8ce467b5ac8c",
+      "rejected_title": "Trump Hosts Governors' Breakfast After National Governors Association ",
+      "winner_title": "Trump Hosts Governors' Breakfast After National Governors Association "
+    },
+    {
+      "rejected_id": "62b08da8-e728-4167-b528-2b3a2ea10412",
+      "winner_id": "ca082e8c-97ca-48f0-8bff-484726b422ae",
+      "rejected_title": "Life Is Harsh And Dangerous In Russian-Run Parts Of Ukraine, Activists",
+      "winner_title": "Life Is Harsh And Dangerous In Russian-Run Parts Of Ukraine, Activists"
+    },
+    {
+      "rejected_id": "c5bc5d9c-99ed-40bf-a6a3-3a50a227afe8",
+      "winner_id": "ce7b4021-964b-455c-8ce2-7816c8225a1c",
+      "rejected_title": "Bounty Pack 2 Vault Card",
+      "winner_title": "Bounty Pack 2 Vault Card"
+    },
+    {
+      "rejected_id": "84580880-2b90-411f-a508-0a47d3512077",
+      "winner_id": "b9f71579-77b6-4f20-a259-8037d2ea52c8",
+      "rejected_title": "Sweden Is Refusing To Let Go Of Canada\u2019S Alleged Olympic Curling Cheat",
+      "winner_title": "Sweden Is Refusing To Let Go Of Canada\u2019S Alleged Olympic Curling Cheat"
+    },
+    {
+      "rejected_id": "1d451c55-1839-4d7b-ba74-14a21343e1ac",
+      "winner_id": "9d2ae8f4-c63a-4fb7-b845-7c9fa5b76e5c",
+      "rejected_title": "Gold Medal Greats Alysa Liu And Eileen Gu Face Uncomfortable Compariso",
+      "winner_title": "Gold Medal Greats Alysa Liu And Eileen Gu Face Uncomfortable Compariso"
+    },
+    {
+      "rejected_id": "fc912910-2236-4372-8bb6-0de233e31154",
+      "winner_id": "0e102d0e-2eb5-4c21-a4e3-5ea8f63c2d04",
+      "rejected_title": "Alex Ferreira Wins 10Th Gold Medal For Team Usa, Matching America'S Hi",
+      "winner_title": "Alex Ferreira Wins 10Th Gold Medal For Team Usa, Matching America'S Hi"
+    },
+    {
+      "rejected_id": "4fdb3ea8-6d7f-41a3-80ea-f3e9941c1d7a",
+      "winner_id": "15b1b6cb-2734-4d5f-879f-77f25395348c",
+      "rejected_title": "Top-Ranked Canada Heartbroken After Upset Loss To Sweden In Women'S Cu",
+      "winner_title": "Top-Ranked Canada Heartbroken After Upset Loss To Sweden In Women'S Cu"
+    },
+    {
+      "rejected_id": "0a3a60a1-1f4f-4501-8e38-541f9e038f02",
+      "winner_id": "5354d4b6-e030-4735-ab3f-5358f5887508",
+      "rejected_title": "Coco Gauff: American Beaten In Epic As Elina Svitolina Reaches Dubai F",
+      "winner_title": "Coco Gauff: American Beaten In Epic As Elina Svitolina Reaches Dubai F"
+    },
+    {
+      "rejected_id": "c3407699-88d3-4749-9d36-04dcd3e46c66",
+      "winner_id": "74c45581-0338-44fa-91fa-e4d9a4f6d8a9",
+      "rejected_title": "Sad Reason Alexandra Daddario Filed For Divorce From Her Husband After",
+      "winner_title": "Sad Reason Alexandra Daddario Filed For Divorce From Her Husband After"
+    },
+    {
+      "rejected_id": "ce40d2b0-b576-48e0-a88d-410ef22b5847",
+      "winner_id": "6ff72187-1172-4768-97d9-8dab4e7a04c3",
+      "rejected_title": "Beijing Promised To 'Fight Back' Over Taiwan Leader'S Us Visit. But Th",
+      "winner_title": "Beijing Promised To 'Fight Back' Over Taiwan Leader'S Us Visit. But Th"
+    },
+    {
+      "rejected_id": "83e90033-2a1a-4fde-849a-81cc21016eb8",
+      "winner_id": "4952b8e8-dbf8-4e91-8e76-d3f32decd028",
+      "rejected_title": "Capitol Agenda: Trump\u2019S Sotu Clouded By Chaos",
+      "winner_title": "Capitol Agenda: Trump\u2019S Sotu Clouded By Chaos"
+    },
+    {
+      "rejected_id": "5808b3bb-783b-4938-b07d-a6410f48cf22",
+      "winner_id": "a087c330-410b-4d30-9f11-bc2d057e30b0",
+      "rejected_title": "Eric Dane, 'Grey'S Anatomy' And 'Euphoria' Star, Dies At 53 Nearly 1 Y",
+      "winner_title": "Eric Dane, 'Grey'S Anatomy' And 'Euphoria' Star, Dies At 53 Nearly 1 Y"
+    },
+    {
+      "rejected_id": "fe0c3de0-9d8d-42c4-90f8-081260314ec3",
+      "winner_id": "6077fc8f-fb55-4424-8053-0e223179b989",
+      "rejected_title": "Blue Owl Anxiety Rattles The $1.8 Trillion Private Credit Market",
+      "winner_title": "Blue Owl Anxiety Rattles The $1.8 Trillion Private Credit Market"
+    },
+    {
+      "rejected_id": "ebab851b-9dc2-4a20-a5a3-8cd11cdcf585",
+      "winner_id": "8c394bdf-0f04-425a-b570-ceb54fdc6364",
+      "rejected_title": "French Minister Under Fire For Playboy Magazine Cover",
+      "winner_title": "French Minister Under Fire For Playboy Magazine Cover"
+    },
+    {
+      "rejected_id": "d00d791b-ac7f-4d00-8e76-ba6b02ea34e9",
+      "winner_id": "26f2218b-058f-4f3f-9515-6d39d8f08497",
+      "rejected_title": "What To Know About The Trump Indictment On The Eve Of His Court Appear",
+      "winner_title": "What To Know About The Trump Indictment On The Eve Of His Court Appear"
+    },
+    {
+      "rejected_id": "bdb5ebd3-3289-43ba-bf46-0bad63a895f3",
+      "winner_id": "c63b2032-87a0-45f3-9c93-f420b9f4b2f0",
+      "rejected_title": "Stephen Jones: We\u2019Ll Finalize Franchise Tag For George Pickens In The ",
+      "winner_title": "Stephen Jones: We\u2019Ll Finalize Franchise Tag For George Pickens In The "
+    },
+    {
+      "rejected_id": "2049327a-09f7-4bd7-9f57-95b76cee9b3d",
+      "winner_id": "2d354c31-b986-4fdc-a173-5f5bc675a577",
+      "rejected_title": "Britain'S Pound Is Beating Every Other Major Currency This Year",
+      "winner_title": "Britain'S Pound Is Beating Every Other Major Currency This Year"
+    },
+    {
+      "rejected_id": "bf082f71-3752-4deb-8f1c-8101ec8c2377",
+      "winner_id": "47792230-2a2f-46e1-bbba-c1111ca22e19",
+      "rejected_title": "Wall Street Journal Reporter Evan Gershkovich Appeals Against Arrest, ",
+      "winner_title": "Wall Street Journal Reporter Evan Gershkovich Appeals Against Arrest, "
+    },
+    {
+      "rejected_id": "e2f5be05-5374-4996-91c7-f62bca4d9af0",
+      "winner_id": "23845fc7-f515-47c9-8c5e-43042f30b1b2",
+      "rejected_title": "A16Z Partner Says That The Theory That We\u2019Ll Vibe Code Everything Is W",
+      "winner_title": "A16Z Partner Says That The Theory That We\u2019Ll Vibe Code Everything Is W"
+    },
+    {
+      "rejected_id": "7bb9385c-c7c9-4452-a43d-c82d0627663e",
+      "winner_id": "30dacefe-65a2-4b3d-af0b-a78415e6a679",
+      "rejected_title": "Sky News Explains Youtube Series Relaunches",
+      "winner_title": "Sky News Explains Youtube Series Relaunches"
+    },
+    {
+      "rejected_id": "d8a1df76-04f3-41af-b534-145c4d406826",
+      "winner_id": "3463a815-bc6b-467f-ac30-53b351031181",
+      "rejected_title": "Claws Are Now A New Layer On Top Of Llm Agents",
+      "winner_title": "Claws Are Now A New Layer On Top Of Llm Agents"
+    },
+    {
+      "rejected_id": "3357b582-d39a-4a49-9786-b27d6b741fb8",
+      "winner_id": "3463a815-bc6b-467f-ac30-53b351031181",
+      "rejected_title": "Claws Are Now A New Layer On Top Of Llm Agents",
+      "winner_title": "Claws Are Now A New Layer On Top Of Llm Agents"
+    },
+    {
+      "rejected_id": "81a6a667-0209-4c33-8f8b-498bf18ad7df",
+      "winner_id": "6387c9ad-cd1b-47b0-8cc5-f0aba08d073e",
+      "rejected_title": "Gamedate \u2013 A Site To Revive Dead Multiplayer Games",
+      "winner_title": "Gamedate \u2013 A Site To Revive Dead Multiplayer Games"
+    },
+    {
+      "rejected_id": "0a95e9e5-df94-4465-b263-5b767afc3f73",
+      "winner_id": "f1d2d14e-8769-4fbf-951a-a54fad6892b1",
+      "rejected_title": "Zclaw: Personal Ai Assistant In Under 888 Kb, Running On An Esp32",
+      "winner_title": "Zclaw: Personal Ai Assistant In Under 888 Kb, Running On An Esp32"
+    },
+    {
+      "rejected_id": "b2874475-7979-42b8-964d-22d77ba2b52a",
+      "winner_id": "26da522d-4ac4-41f9-8b36-e98ecc89b7b5",
+      "rejected_title": "Canvas_Ity: A Tiny, Single-Header <Canvas>-Like 2D Rasterizer For C++",
+      "winner_title": "Canvas_Ity: A Tiny, Single-Header <Canvas>-Like 2D Rasterizer For C++"
+    },
+    {
+      "rejected_id": "546ddc93-3fc4-4229-a957-471301cef051",
+      "winner_id": "3d03d1aa-518b-46b3-ba9f-a3a6edde1964",
+      "rejected_title": "Show Hn: Llama 3.1 70B On A Single Rtx 3090 Via Nvme-To-Gpu Bypassing ",
+      "winner_title": "Show Hn: Llama 3.1 70B On A Single Rtx 3090 Via Nvme-To-Gpu Bypassing "
+    },
+    {
+      "rejected_id": "b020cfaf-1de6-4514-86b7-873022feae83",
+      "winner_id": "3d03d1aa-518b-46b3-ba9f-a3a6edde1964",
+      "rejected_title": "Show Hn: Llama 3.1 70B On A Single Rtx 3090 Via Nvme-To-Gpu Bypassing ",
+      "winner_title": "Show Hn: Llama 3.1 70B On A Single Rtx 3090 Via Nvme-To-Gpu Bypassing "
+    },
+    {
+      "rejected_id": "e3e7d58f-e009-4749-8cbb-0f6efa58fa97",
+      "winner_id": "b5e55604-4e16-43b0-88b5-1046d7631fea",
+      "rejected_title": "Cxmt Has Been Offering Ddr4 Chips At About Half The Prevailing Market ",
+      "winner_title": "Cxmt Has Been Offering Ddr4 Chips At About Half The Prevailing Market "
+    },
+    {
+      "rejected_id": "9c9baa6e-c2ec-4d39-99e0-06238fe34c62",
+      "winner_id": "b5e55604-4e16-43b0-88b5-1046d7631fea",
+      "rejected_title": "Cxmt Has Been Offering Ddr4 Chips At About Half The Prevailing Market ",
+      "winner_title": "Cxmt Has Been Offering Ddr4 Chips At About Half The Prevailing Market "
+    },
+    {
+      "rejected_id": "19179036-9b0d-4a87-a13e-a04807913b12",
+      "winner_id": "b5e55604-4e16-43b0-88b5-1046d7631fea",
+      "rejected_title": "Cxmt Has Been Offering Ddr4 Chips At About Half The Prevailing Market ",
+      "winner_title": "Cxmt Has Been Offering Ddr4 Chips At About Half The Prevailing Market "
+    },
+    {
+      "rejected_id": "919e74d0-ea72-449c-a32b-78b11d468aa9",
+      "winner_id": "d3369132-9c9e-4bf7-9f52-7412a7b32157",
+      "rejected_title": "All You Need To Know Ahead Of The Bafta Film Awards 2026",
+      "winner_title": "All You Need To Know Ahead Of The Bafta Film Awards 2026"
+    },
+    {
+      "rejected_id": "485d2a6a-94c0-41da-a3e7-67cf6d13d888",
+      "winner_id": "d3369132-9c9e-4bf7-9f52-7412a7b32157",
+      "rejected_title": "All You Need To Know Ahead Of The Bafta Film Awards 2026",
+      "winner_title": "All You Need To Know Ahead Of The Bafta Film Awards 2026"
+    },
+    {
+      "rejected_id": "2d7ce820-f4c4-4873-ab85-7903694728d7",
+      "winner_id": "68398875-b9b5-4b3f-9869-749fb46ef62e",
+      "rejected_title": "Trump Pleads Not Guilty To 34 Felony Counts",
+      "winner_title": "Trump Pleads Not Guilty To 34 Felony Counts"
+    },
+    {
+      "rejected_id": "35b07ebf-e15c-4fe3-94f5-1b479627dee1",
+      "winner_id": "34ff1939-defd-4043-b258-98b9b1350001",
+      "rejected_title": "How Taalas \"Prints\" Llm Onto A Chip?",
+      "winner_title": "How Taalas \u201cPrints\u201d Llm Onto A Chip?"
+    },
+    {
+      "rejected_id": "8b7aaf13-7a06-436c-b26f-65fbd50d474f",
+      "winner_id": "8ff47cfc-d08d-4fd7-896c-97abdf9d56e6",
+      "rejected_title": "How Far Back In Time Can You Understand English?",
+      "winner_title": "How Far Back In Time Can You Understand English?"
+    },
+    {
+      "rejected_id": "24bbc2ff-6286-47e2-80f3-e5b1aeef7c02",
+      "winner_id": "8ff47cfc-d08d-4fd7-896c-97abdf9d56e6",
+      "rejected_title": "How Far Back In Time Can You Understand English?",
+      "winner_title": "How Far Back In Time Can You Understand English?"
+    },
+    {
+      "rejected_id": "fc340b4c-4d93-4486-8b6c-1942f745bf6a",
+      "winner_id": "71147c89-4a71-41ed-8754-473c27ae5e32",
+      "rejected_title": "How I Launched 3 Consoles And Found True Love At Babbage'S Store No. 9",
+      "winner_title": "How I Launched 3 Consoles And Found True Love At Babbage'S Store No. 9"
+    },
+    {
+      "rejected_id": "80cc6deb-e540-4507-be98-18496d6c4417",
+      "winner_id": "4521403c-a9f9-485c-88fc-53b0ce61c8f6",
+      "rejected_title": "Minions: Stripe'S One-Shot, End-To-End Coding Agents \u2013 Stripe Dot Dev ",
+      "winner_title": "Minions: Stripe'S One-Shot, End-To-End Coding Agents \u2013 Stripe Dot Dev "
+    },
+    {
+      "rejected_id": "e428e818-939d-4833-964c-ad288d68b6e6",
+      "winner_id": "fb6147cd-41f5-49dc-bb63-f59a1acb7ef4",
+      "rejected_title": "Attention Media \u2260 Social Networks",
+      "winner_title": "Attention Media \u2260 Social Networks"
+    },
+    {
+      "rejected_id": "bb999d25-fd3b-4bf6-915c-5ece02a42831",
+      "winner_id": "47f67db8-09a9-46ef-93c4-206e6f13457f",
+      "rejected_title": "I Verified My Linkedin Identity. Here'S What I Handed Over",
+      "winner_title": "I Verified My Linkedin Identity. Here'S What I Handed Over"
+    },
+    {
+      "rejected_id": "80684596-b70a-4717-9b07-b042d0d378e0",
+      "winner_id": "dd305b5d-644a-48b1-bb26-ec281877b4a6",
+      "rejected_title": "What'S The Best Way To Learn A New Language?",
+      "winner_title": "What'S The Best Way To Learn A New Language?"
+    },
+    {
+      "rejected_id": "00be4ec1-901b-4fba-a6f9-6b660680c938",
+      "winner_id": "34166d77-d8c0-4dc0-81ab-6c537c18b7de",
+      "rejected_title": "The Most Played Music Artists For Uk Cities - Some May Surprise You",
+      "winner_title": "The Most Played Music Artists For Uk Cities - Some May Surprise You"
+    },
+    {
+      "rejected_id": "04102a8d-97cb-422c-be70-0b82ee2750ad",
+      "winner_id": "8a6ed23b-cef2-4296-8256-0c84f2a46117",
+      "rejected_title": "'Effective' Send Support Won'T Be Taken Away, Minister Says",
+      "winner_title": "'Effective' Send Support Won'T Be Taken Away, Minister Says"
+    },
+    {
+      "rejected_id": "38523327-a417-4047-87dd-7f9edabe4a6c",
+      "winner_id": "8a6ed23b-cef2-4296-8256-0c84f2a46117",
+      "rejected_title": "'Effective' Send Support Won'T Be Taken Away, Minister Says",
+      "winner_title": "'Effective' Send Support Won'T Be Taken Away, Minister Says"
+    },
+    {
+      "rejected_id": "35b5c087-5007-485f-b4ec-1dbebf38c3e2",
+      "winner_id": "c9f05694-3323-4fe1-87cf-3dea30238d4e",
+      "rejected_title": "Prince William Pays Tribute To Tiktoker Army Medic Following Her Death",
+      "winner_title": "Prince William Pays Tribute To Tiktoker Army Medic Following Her Death"
+    },
+    {
+      "rejected_id": "6808dbfb-edf2-4e2b-b1de-b9ed63c726bd",
+      "winner_id": "f2745dae-bc81-4510-9cc5-ca9b7383b17b",
+      "rejected_title": "How Sister'S Success Paved Way For Atkin'S Olympic Bronze",
+      "winner_title": "How Sister'S Success Paved Way For Atkin'S Olympic Bronze"
+    },
+    {
+      "rejected_id": "59fb4228-b21d-4e09-a53a-5ae72449cd60",
+      "winner_id": "cffbc134-1d54-4d9e-9e74-09f128e86469",
+      "rejected_title": "Two Bits Are Better Than One: Making Bloom Filters 2X More Accurate",
+      "winner_title": "Two Bits Are Better Than One: Making Bloom Filters 2X More Accurate"
+    },
+    {
+      "rejected_id": "93205b08-3beb-40b3-a67a-6389941b29c6",
+      "winner_id": "cffbc134-1d54-4d9e-9e74-09f128e86469",
+      "rejected_title": "Two Bits Are Better Than One: Making Bloom Filters 2X More Accurate",
+      "winner_title": "Two Bits Are Better Than One: Making Bloom Filters 2X More Accurate"
+    },
+    {
+      "rejected_id": "39e76d28-c05f-48d1-a933-5549f75ba25e",
+      "winner_id": "0e66ce10-9d5d-4dd1-bfde-9af55abb46eb",
+      "rejected_title": "The Four Astronauts Nasa Picked For The First Crewed Moon Mission In 5",
+      "winner_title": "The Four Astronauts Nasa Picked For The First Crewed Moon Mission In 5"
+    },
+    {
+      "rejected_id": "9f80af6f-8305-47a9-b4ac-dade47799552",
+      "winner_id": "0e66ce10-9d5d-4dd1-bfde-9af55abb46eb",
+      "rejected_title": "The Four Astronauts Nasa Picked For The First Crewed Moon Mission In 5",
+      "winner_title": "The Four Astronauts Nasa Picked For The First Crewed Moon Mission In 5"
+    },
+    {
+      "rejected_id": "8148cfd5-38f9-42bd-8dab-1d67eff559c8",
+      "winner_id": "96bf9ded-7d63-413e-84c3-c628e34176a4",
+      "rejected_title": "Cheapest Day To Travel Has Changed - And It Could Save You 18% On Flig",
+      "winner_title": "Cheapest Day To Travel Has Changed - And It Could Save You 18% On Flig"
+    },
+    {
+      "rejected_id": "055783f6-e29c-46e8-ad5b-ca55b4e36413",
+      "winner_id": "e12f583a-ede4-4ac8-b62e-2c2d2f9a0596",
+      "rejected_title": "Are Ties And Blazers On The Way Out? Why Some Schools Are Pushing For ",
+      "winner_title": "Are Ties And Blazers On The Way Out? Why Some Schools Are Pushing For "
+    },
+    {
+      "rejected_id": "0f5c9ff1-5b0d-4b7b-8243-ba303aeb8561",
+      "winner_id": "98500e9e-4286-491e-9880-68ed8a04f8ce",
+      "rejected_title": "We Thought Gen Z Had Started Going To Church In Droves. But The Truth ",
+      "winner_title": "We Thought Gen Z Had Started Going To Church In Droves. But The Truth "
+    },
+    {
+      "rejected_id": "c8e1df86-0d24-458c-945d-62e7d03a6770",
+      "winner_id": "98500e9e-4286-491e-9880-68ed8a04f8ce",
+      "rejected_title": "We Thought Gen Z Had Started Going To Church In Droves. But The Truth ",
+      "winner_title": "We Thought Gen Z Had Started Going To Church In Droves. But The Truth "
+    },
+    {
+      "rejected_id": "77174c3b-fb1c-4dfd-a489-fe5e91bb4642",
+      "winner_id": "8f761020-7cb9-49d1-aae8-eabad6ba3efd",
+      "rejected_title": "Why Did Finland'S Pm Lose? Reporter Explains The Key Issue Voters Care",
+      "winner_title": "Why Did Finland'S Pm Lose? Reporter Explains The Key Issue Voters Care"
+    },
+    {
+      "rejected_id": "82dc96fc-34ad-4559-86c9-782a7bfddc00",
+      "winner_id": "8f761020-7cb9-49d1-aae8-eabad6ba3efd",
+      "rejected_title": "Why Did Finland'S Pm Lose? Reporter Explains The Key Issue Voters Care",
+      "winner_title": "Why Did Finland'S Pm Lose? Reporter Explains The Key Issue Voters Care"
+    },
+    {
+      "rejected_id": "7f7dc83c-f530-4b95-8da1-826a1e1e624c",
+      "winner_id": "8f761020-7cb9-49d1-aae8-eabad6ba3efd",
+      "rejected_title": "Why Did Finland'S Pm Lose? Reporter Explains The Key Issue Voters Care",
+      "winner_title": "Why Did Finland'S Pm Lose? Reporter Explains The Key Issue Voters Care"
+    },
+    {
+      "rejected_id": "1536b69d-ed14-4428-ae97-ca3fd97c8384",
+      "winner_id": "2e918e13-f41a-498e-be44-b39d6ca0ab05",
+      "rejected_title": "Volatility: The Volatile Memory Forensic Extraction Framework",
+      "winner_title": "Volatility: The Volatile Memory Forensic Extraction Framework"
+    },
+    {
+      "rejected_id": "64b0ea17-3f91-4832-8bfd-d90b8f5235c6",
+      "winner_id": "e288c6a4-eff5-4b33-b239-9af99d375f66",
+      "rejected_title": "How I Use Claude Code: Separation Of Planning And Execution",
+      "winner_title": "How I Use Claude Code: Separation Of Planning And Execution"
+    },
+    {
+      "rejected_id": "2b76e3ab-5e55-4c99-8cb7-32ce93fa4cf4",
+      "winner_id": "392f49bc-0dbf-43e4-b914-2205911c9a2a",
+      "rejected_title": "The Papers: 'Mandelson Arrested' And 'Four Years Of Tears' In Ukraine",
+      "winner_title": "The Papers: 'Mandelson Arrested' And 'Four Years Of Tears' In Ukraine"
+    },
+    {
+      "rejected_id": "f84c9b36-2d49-4a36-8879-f98ba1ee0fcb",
+      "winner_id": "ade57513-62af-4c3b-b98d-ffc7368fd2e7",
+      "rejected_title": "I Cleaned Toilets While Studying At Cambridge",
+      "winner_title": "I Cleaned Toilets While Studying At Cambridge"
+    },
+    {
+      "rejected_id": "dd8fc380-a5cd-4860-9f60-410f3139ec8b",
+      "winner_id": "943dc8ae-a460-4e1a-ab13-b67976011ecf",
+      "rejected_title": "Unreal Numbers",
+      "winner_title": "Unreal Numbers"
+    },
+    {
+      "rejected_id": "86023504-7865-4b40-9fb7-c02f6c847bbd",
+      "winner_id": "1e86a8df-1449-4a71-bde1-ba2886920cd9",
+      "rejected_title": "'Scary, Cold, Hungry And Lonely': Volunteer Soldier Shares Experience ",
+      "winner_title": "'Scary, Cold, Hungry And Lonely': Volunteer Soldier Shares Experience "
+    },
+    {
+      "rejected_id": "b07561ef-944c-4747-a4b2-18b4a18f5f35",
+      "winner_id": "38f5d368-f643-404f-9c28-15a8f68c26d8",
+      "rejected_title": "Finland'S Prime Minister Sanna Marin Concedes Election",
+      "winner_title": "Finland'S Prime Minister Sanna Marin Concedes Election"
+    },
+    {
+      "rejected_id": "8623e9fb-b923-4138-9933-370b5b39c6c7",
+      "winner_id": "b42f75d3-4d8e-4e1a-96e6-48c5ec6b391b",
+      "rejected_title": "Read: Trump Indictment Related To Hush Money Payment",
+      "winner_title": "Read: Trump Indictment Related To Hush Money Payment"
+    },
+    {
+      "rejected_id": "df3044c4-ecc6-4527-b1d7-44dc165b5b06",
+      "winner_id": "cd7f1c0e-a55a-45b5-8074-281971c7178e",
+      "rejected_title": "\"Car Wash\" Test With 53 Models",
+      "winner_title": "\u201cCar Wash\u201d Test With 53 Models"
+    },
+    {
+      "rejected_id": "a320136c-d33a-407c-89ab-e7cbade7ef9d",
+      "winner_id": "85ebfad6-5f75-4466-b3fa-c75b95c31f1f",
+      "rejected_title": "New Study Hints At A Hidden Alzheimer\u2019S Risk Factor Affecting Older Am",
+      "winner_title": "New Study Hints At A Hidden Alzheimer\u2019S Risk Factor Affecting Older Am"
+    },
+    {
+      "rejected_id": "ce66a23a-eb12-472c-97c9-0a0c50c8a455",
+      "winner_id": "c409f55a-b65b-47b1-92eb-71299d88d5f4",
+      "rejected_title": "This Supernova Progenitor Hid Behind A Surprisingly Thick Veil Of Carb",
+      "winner_title": "This Supernova Progenitor Hid Behind a Surprisingly Thick Veil of Carb"
+    },
+    {
+      "rejected_id": "cd7d15ab-498b-4fdf-86bb-4e6907495535",
+      "winner_id": "fc954237-ad89-416b-81aa-d9bd7a1d48e3",
+      "rejected_title": "Self-Driving Tech Startup Wayve Raises $1.2B From Nvidia, Uber, And Th",
+      "winner_title": "Self-Driving Tech Startup Wayve Raises $1.2B From Nvidia, Uber, And Th"
+    },
+    {
+      "rejected_id": "529375ad-3424-4508-9bae-43b04874a158",
+      "winner_id": "20a1f40c-2434-4fdd-901c-535174cb48c6",
+      "rejected_title": "A Retinal Reboot For Amblyopia",
+      "winner_title": "A Retinal Reboot For Amblyopia"
+    },
+    {
+      "rejected_id": "52e32397-e5b6-41a5-8494-2f844c44e75f",
+      "winner_id": "22cc2bb0-d5a2-4c46-83e7-b2d698df1ad7",
+      "rejected_title": "Supercomputer Simulations Crack A Long-Standing Mystery About Red Dwar",
+      "winner_title": "Supercomputer Simulations Crack a Long-Standing Mystery About Red Dwar"
+    },
+    {
+      "rejected_id": "f614e925-05b1-46a6-803b-5bdddeb41ec3",
+      "winner_id": "91883393-2a2a-47cb-8726-2c977b637d64",
+      "rejected_title": "Llm=True",
+      "winner_title": "Llm=True"
+    },
+    {
+      "rejected_id": "f68149d0-7fcf-4ad5-b8d4-fa23e0c04138",
+      "winner_id": "7fe4ca83-f69e-4b82-8386-825f5f10855c",
+      "rejected_title": "'Smiling' Fossil Discovered On Holy Island",
+      "winner_title": "'Smiling' fossil discovered on Holy Island"
+    },
+    {
+      "rejected_id": "bba4c533-efc7-47a2-aac7-6785020945da",
+      "winner_id": "b9985d85-4787-4c24-99ae-853c89db751c",
+      "rejected_title": "Mexican Drug Cartel Boss \u2018El Mencho\u2019 Tracked Through Romantic Partner",
+      "winner_title": "Mexican drug cartel boss \u2018El Mencho\u2019 tracked through romantic partner"
+    },
+    {
+      "rejected_id": "72e60dbd-5143-49e1-ab1c-bbb44cff6979",
+      "winner_id": "8967b0e4-0c04-45c5-8a93-be85ed9b9d2f",
+      "rejected_title": "Here\u2019S What A Google Subpoena Response Looks Like, Courtesy Of The Eps",
+      "winner_title": "Here\u2019s What a Google Subpoena Response Looks Like, Courtesy of the Eps"
+    },
+    {
+      "rejected_id": "eef76fc9-4053-4914-99e6-0d8df31c30db",
+      "winner_id": "d8faf24d-0b1f-44fe-9b59-5827f42c3828",
+      "rejected_title": "Treasures Found On Hs2 Route Stored In Secret Warehouse",
+      "winner_title": "Treasures found on HS2 route stored in secret warehouse"
+    },
+    {
+      "rejected_id": "e8ced421-ae8a-4d89-a9f6-cc8a7afd81c3",
+      "winner_id": "01318081-e7c6-405a-94b4-fd457c8dd34e",
+      "rejected_title": "Nvidia Challenger Ai Chip Startup Matx Raised $500M",
+      "winner_title": "Nvidia challenger AI chip startup MatX raised $500M"
+    },
+    {
+      "rejected_id": "12fe2e0f-fce2-447b-9c02-8db99e5ece6b",
+      "winner_id": "3462f636-454f-4b9c-890a-d290e36b6fe3",
+      "rejected_title": "In A Replay Of 2019, Apple Says A Single Desktop Mac Will Be Manufactu",
+      "winner_title": "In a replay of 2019, Apple says a single desktop Mac will be manufactu"
+    },
+    {
+      "rejected_id": "46c419d2-49a8-4abe-8263-ce4448fdb5fc",
+      "winner_id": "cb1711da-61c4-4471-b035-3c6f467fb2bf",
+      "rejected_title": "Meta Could End Up Owning 10% Of Amd In New Chip Deal",
+      "winner_title": "Meta could end up owning 10% of AMD in new chip deal"
+    },
+    {
+      "rejected_id": "42eef8ad-3ab6-47dd-b562-7a50919dcb0a",
+      "winner_id": "e29eaed2-966d-428b-be9e-b9e6f8c424ae",
+      "rejected_title": "I Did It. I Actually Saw A Cetti\u2019S Warbler | Lev Parikian",
+      "winner_title": "I did it. I actually saw a Cetti\u2019s warbler | Lev Parikian"
+    },
+    {
+      "rejected_id": "16e88aac-776f-443c-89f4-ac914cef60b4",
+      "winner_id": "7c3a71c2-a963-49c1-b8ef-7cd97b0c7b54",
+      "rejected_title": "China Briefing 19 February 2026: Co2 Emissions \u2018Flat Or Falling\u2019 | Fir",
+      "winner_title": "China Briefing 19 February 2026: CO2 emissions \u2018flat or falling\u2019 | Fir"
+    }
+  ],
+  "total_rejected": 156
+}

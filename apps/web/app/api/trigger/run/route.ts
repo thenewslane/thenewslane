@@ -85,11 +85,16 @@ export async function GET(req: NextRequest) {
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       console.error('[trigger/run] Runner responded', res.status, body);
+      const hint =
+        res.status === 405
+          ? 'RUNNER_WEBHOOK_URL must be the webhook endpoint that accepts POST (e.g. …/run or …/), not /health or a GET-only URL.'
+          : undefined;
       return NextResponse.json(
         {
           ok: false,
           error: `Runner returned ${res.status}`,
           status: res.status,
+          ...(hint ? { hint } : {}),
         },
         { status: 503, headers },
       );

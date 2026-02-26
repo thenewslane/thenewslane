@@ -19,6 +19,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -106,18 +107,36 @@ async def _rehash_topic(client, topic: dict, dry_run: bool = False) -> dict | No
         article=article[:6000],  # cap to avoid exceeding context
     )
 
+    raw = ""
     try:
         response = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             system=_REHASH_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=4000,
+            max_tokens=8192,
             temperature=0.4,
         )
+        if not response.content:
+            log.error(
+                "rehash: empty content array for %s (stop_reason=%s)",
+                topic_id, response.stop_reason,
+            )
+            return None
         raw = response.content[0].text.strip()
+        if not raw:
+            log.error(
+                "rehash: empty text for %s (stop_reason=%s)",
+                topic_id, response.stop_reason,
+            )
+            return None
+        # Strip markdown code fences that the model may add despite instructions
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-zA-Z]*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw.rstrip())
+            raw = raw.strip()
         data = json.loads(raw)
     except json.JSONDecodeError as e:
-        log.error("rehash: JSON parse error for %s: %s", topic_id, e)
+        log.error("rehash: JSON parse error for %s: %s | raw[:300]=%r", topic_id, e, raw[:300])
         return None
     except Exception as e:
         log.error("rehash: Claude API error for %s: %s", topic_id, e)
