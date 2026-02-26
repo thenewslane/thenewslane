@@ -27,7 +27,11 @@ const RUNNER_WEBHOOK_URL = (process.env.RUNNER_WEBHOOK_URL ?? '').trim();
 const RUNNER_WEBHOOK_SECRET = (process.env.RUNNER_WEBHOOK_SECRET ?? process.env.CRON_SECRET ?? '').trim();
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+/** Keep under typical proxy timeouts (e.g. Cloudflare 100s, Vercel 60s) so we respond before gateway timeout. */
+export const maxDuration = 15;
+
+/** How long to wait for the runner to respond before treating as "sent but unconfirmed". */
+const RUNNER_FETCH_TIMEOUT_MS = 12_000;
 
 export async function GET(req: NextRequest) {
   const headers = {
@@ -59,29 +63,35 @@ export async function GET(req: NextRequest) {
   const rawTarget = req.nextUrl.searchParams.get('target') ?? '5';
   const target = Math.max(1, Math.min(20, parseInt(rawTarget, 10) || 5));
 
-  try {
-    const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (RUNNER_WEBHOOK_SECRET) {
-      reqHeaders['Authorization'] = `Bearer ${RUNNER_WEBHOOK_SECRET}`;
-    }
+  const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (RUNNER_WEBHOOK_SECRET) {
+    reqHeaders['Authorization'] = `Bearer ${RUNNER_WEBHOOK_SECRET}`;
+  }
 
+  const payload = {
+    source: 'manual-trigger',
+    min_publish: target,
+    at: new Date().toISOString(),
+  };
+
+  try {
     const res = await fetch(RUNNER_WEBHOOK_URL, {
       method: 'POST',
       headers: reqHeaders,
-      body: JSON.stringify({
-        source: 'manual-trigger',
-        min_publish: target,
-        at: new Date().toISOString(),
-      }),
-      signal: AbortSignal.timeout(55_000),
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(RUNNER_FETCH_TIMEOUT_MS),
     });
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       console.error('[trigger/run] Runner responded', res.status, body);
       return NextResponse.json(
-        { ok: false, error: `Runner returned ${res.status}` },
-        { status: 502, headers },
+        {
+          ok: false,
+          error: `Runner returned ${res.status}`,
+          status: res.status,
+        },
+        { status: 503, headers },
       );
     }
 
@@ -99,10 +109,32 @@ export async function GET(req: NextRequest) {
       { headers },
     );
   } catch (err) {
+    const isTimeout = err instanceof Error && err.name === 'TimeoutError';
     console.error('[trigger/run] Failed to call runner:', err);
+
+    // Timeout or network error: return 200 with "sent but unconfirmed" so we don't surface 502 to Cloudflare.
+    // The POST may have reached the runner; pipeline might still be running.
+    if (isTimeout) {
+      return NextResponse.json(
+        {
+          ok: true,
+          triggered: true,
+          target,
+          message: `Trigger sent. Runner did not respond within ${RUNNER_FETCH_TIMEOUT_MS / 1000}s — pipeline may still be running. Check runner logs.`,
+          unconfirmed: true,
+        },
+        { headers },
+      );
+    }
+
+    // Connection refused, DNS failure, etc. — service unavailable, not bad gateway
     return NextResponse.json(
-      { ok: false, error: 'Runner request failed' },
-      { status: 502, headers },
+      {
+        ok: false,
+        error: 'Runner unreachable',
+        hint: 'Check RUNNER_WEBHOOK_URL and that the agent (e.g. python main.py --webhook) is running and reachable.',
+      },
+      { status: 503, headers },
     );
   }
 }
