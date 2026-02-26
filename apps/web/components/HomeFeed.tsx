@@ -91,59 +91,47 @@ function CategoryChips({
   );
 }
 
-// ── Hero Carousel ─────────────────────────────────────────────────────────
+// ── Hero Card (shared by both carousel and card deck) ─────────────────────
 
-function HeroCarousel({ topics }: { topics: TrendingTopic[] }) {
-  const router = useRouter();
-  const [idx, setIdx] = useState(0);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const restart = useCallback(() => {
-    if (timer.current) clearInterval(timer.current);
-    timer.current = setInterval(() => setIdx(i => (i + 1) % topics.length), 5000);
-  }, [topics.length]);
-
-  useEffect(() => {
-    restart();
-    return () => { if (timer.current) clearInterval(timer.current); };
-  }, [restart]);
-
-  if (!topics.length) return null;
-  const topic = topics[idx];
-
+function HeroCard({
+  topic,
+  onClick,
+  style,
+}: {
+  topic: TrendingTopic;
+  onClick: () => void;
+  style?: React.CSSProperties;
+}) {
   return (
     <div
       style={{
-        position: 'relative',
+        position: 'absolute',
+        inset: 0,
         borderRadius: 16,
         overflow: 'hidden',
         cursor: 'pointer',
-        height: 'clamp(240px, 40vw, 480px)',
         background: BRAND_NAVY,
-        marginBottom: 24,
+        willChange: 'transform',
+        ...style,
       }}
-      onClick={() => router.push(`/trending/${topic.slug}`)}
+      onClick={onClick}
     >
-      {/* Background image */}
       {thumb(topic) ? (
         <img
           src={thumb(topic)!}
           alt=""
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          draggable={false}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
         />
       ) : (
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${BRAND_NAVY} 0%, #0a1628 100%)` }} />
       )}
-
-      {/* Gradient overlay */}
       <div
         style={{
           position: 'absolute', inset: 0,
           background: 'linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 50%, rgba(0,0,0,.1) 100%)',
         }}
       />
-
-      {/* Category badge */}
       {catName(topic) && (
         <div style={{ position: 'absolute', top: 16, left: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,.2)' }}>
@@ -151,35 +139,224 @@ function HeroCarousel({ topics }: { topics: TrendingTopic[] }) {
           </span>
         </div>
       )}
-
-      {/* Content */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 20px 16px' }}>
         <h2 style={{ fontSize: 'clamp(18px, 3vw, 28px)', fontWeight: 800, color: '#fff', lineHeight: 1.25, marginBottom: 8, fontFamily: 'var(--font-heading)' }}>
           {topic.title}
         </h2>
         {(topic as any).summary && (
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', lineHeight: 1.5, margin: '0 0 12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', lineHeight: 1.5, margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {(topic as any).summary}
           </p>
         )}
-
-        {/* Pagination dots */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {topics.map((_, i) => (
-            <button
-              key={i}
-              onClick={e => { e.stopPropagation(); setIdx(i); restart(); }}
-              style={{
-                width: i === idx ? 20 : 6, height: 6, borderRadius: 3,
-                background: i === idx ? BRAND_RED : 'rgba(255,255,255,.4)',
-                border: 'none', cursor: 'pointer', padding: 0,
-                transition: 'all 0.3s',
-              }}
-            />
-          ))}
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', marginLeft: 8 }}>{timeAgo(topic.published_at)}</span>
-        </div>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>{timeAgo(topic.published_at)}</span>
       </div>
+    </div>
+  );
+}
+
+// ── Hero Carousel (desktop: auto-rotate / mobile: swipeable card deck) ────
+
+const SWIPE_THRESHOLD = 60;
+
+function HeroCarousel({ topics }: { topics: TrendingTopic[] }) {
+  const router = useRouter();
+  const [idx, setIdx] = useState(0);
+  const [offsetX, setOffsetX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const [exiting, setExiting] = useState<'left' | 'right' | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const touchRef = useRef<{ startX: number; startY: number; locked: boolean } | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Desktop auto-rotate (disabled on mobile to avoid conflict with swipe)
+  const restart = useCallback(() => {
+    if (timer.current) clearInterval(timer.current);
+    if (!isMobile) {
+      timer.current = setInterval(() => setIdx(i => (i + 1) % topics.length), 5000);
+    }
+  }, [topics.length, isMobile]);
+
+  useEffect(() => {
+    restart();
+    return () => { if (timer.current) clearInterval(timer.current); };
+  }, [restart]);
+
+  // ── Touch handlers for swipeable card deck ──────────────────────────────
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobile) return;
+    touchRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      locked: false,
+    };
+    setSwiping(true);
+  }, [isMobile]);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isMobile || !touchRef.current) return;
+    const dx = e.touches[0].clientX - touchRef.current.startX;
+    const dy = e.touches[0].clientY - touchRef.current.startY;
+
+    // Lock to horizontal if movement is more horizontal than vertical
+    if (!touchRef.current.locked) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        touchRef.current.locked = true;
+        if (Math.abs(dy) > Math.abs(dx)) {
+          // Vertical scroll — abort swipe
+          touchRef.current = null;
+          setSwiping(false);
+          setOffsetX(0);
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+    setOffsetX(dx);
+  }, [isMobile]);
+
+  const onTouchEnd = useCallback(() => {
+    if (!isMobile || !touchRef.current) {
+      setSwiping(false);
+      return;
+    }
+    const dx = offsetX;
+    touchRef.current = null;
+    setSwiping(false);
+
+    if (Math.abs(dx) > SWIPE_THRESHOLD) {
+      const direction = dx < 0 ? 'left' : 'right';
+      setExiting(direction);
+      // After animation completes, advance card
+      setTimeout(() => {
+        setIdx(i => {
+          if (direction === 'left') return (i + 1) % topics.length;
+          return (i - 1 + topics.length) % topics.length;
+        });
+        setExiting(null);
+        setOffsetX(0);
+      }, 250);
+    } else {
+      setOffsetX(0);
+    }
+  }, [isMobile, offsetX, topics.length]);
+
+  if (!topics.length) return null;
+
+  const topic = topics[idx];
+  const nextIdx = (idx + 1) % topics.length;
+  const prevIdx = (idx - 1 + topics.length) % topics.length;
+
+  // Exit animation transform
+  const exitTransform = exiting === 'left'
+    ? 'translateX(-110%) rotate(-8deg)'
+    : exiting === 'right'
+      ? 'translateX(110%) rotate(8deg)'
+      : undefined;
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        height: 'clamp(280px, 50vw, 480px)',
+        marginBottom: 24,
+        touchAction: isMobile ? 'pan-y' : 'auto',
+        userSelect: 'none',
+      }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {isMobile ? (
+        <>
+          {/* Back card (peek) */}
+          <HeroCard
+            topic={topics[offsetX < 0 ? nextIdx : prevIdx]}
+            onClick={() => {}}
+            style={{
+              zIndex: 1,
+              transform: 'scale(0.93) translateY(12px)',
+              opacity: 0.6,
+              transition: swiping ? 'none' : 'all 0.3s ease',
+              borderRadius: 16,
+              boxShadow: '0 4px 20px rgba(0,0,0,.15)',
+            }}
+          />
+
+          {/* Top card (swipeable) */}
+          <HeroCard
+            topic={topic}
+            onClick={() => !swiping && !exiting && router.push(`/trending/${topic.slug}`)}
+            style={{
+              zIndex: 2,
+              transform: exiting
+                ? exitTransform
+                : swiping
+                  ? `translateX(${offsetX}px) rotate(${offsetX * 0.04}deg)`
+                  : 'translateX(0) rotate(0)',
+              opacity: exiting ? 0 : 1,
+              transition: swiping ? 'none' : 'all 0.25s ease',
+              boxShadow: '0 8px 32px rgba(0,0,0,.25)',
+            }}
+          />
+
+          {/* Card counter + swipe hint */}
+          <div style={{
+            position: 'absolute', bottom: -20, left: 0, right: 0,
+            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, zIndex: 3,
+          }}>
+            {topics.map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: i === idx ? 18 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  background: i === idx ? BRAND_RED : 'rgba(0,0,0,.15)',
+                  transition: 'all 0.3s',
+                }}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Desktop: classic full-bleed carousel */}
+          <HeroCard
+            topic={topic}
+            onClick={() => router.push(`/trending/${topic.slug}`)}
+            style={{ zIndex: 1 }}
+          />
+          {/* Desktop pagination dots */}
+          <div style={{
+            position: 'absolute', bottom: 16, left: 20, zIndex: 2,
+            display: 'flex', gap: 6, alignItems: 'center',
+          }}>
+            {topics.map((_, i) => (
+              <button
+                key={i}
+                onClick={e => { e.stopPropagation(); setIdx(i); restart(); }}
+                style={{
+                  width: i === idx ? 20 : 6, height: 6, borderRadius: 3,
+                  background: i === idx ? BRAND_RED : 'rgba(255,255,255,.4)',
+                  border: 'none', cursor: 'pointer', padding: 0,
+                  transition: 'all 0.3s',
+                }}
+              />
+            ))}
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', marginLeft: 8 }}>{timeAgo(topic.published_at)}</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
