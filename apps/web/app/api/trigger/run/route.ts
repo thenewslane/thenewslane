@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
       {
         ok: false,
         error: 'Runner unreachable',
-        hint: 'Check RUNNER_WEBHOOK_URL and that the agent (e.g. python main.py --webhook) is running and reachable.',
+        hint: 'RUNNER_WEBHOOK_URL must be a public URL (not localhost). Start the agent with: python main.py --webhook. See docs/trigger-and-runner-setup.md',
       },
       { status: 503, headers },
     );
