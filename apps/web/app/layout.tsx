@@ -23,6 +23,7 @@
  */
 
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import { Providers }        from './providers';
 import { Header }           from '@/components/Header';
@@ -106,6 +107,28 @@ export default function RootLayout({
         />
         {/* Author entity markup — establishes E-E-A-T signals sitewide */}
         <AuthorSchema />
+        {/* Google Publisher Tag (GPT) — header slot for 300x250 ATF */}
+        <Script
+          id="gpt-header"
+          src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
+          strategy="beforeInteractive"
+          crossOrigin="anonymous"
+        />
+        <Script
+          id="gpt-header-init"
+          strategy="beforeInteractive"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.googletag = window.googletag || {cmd: []};
+              googletag.cmd.push(function() {
+                googletag.defineSlot('/23173092177/newslane/Newslane_300x250_ATF', [300, 250], 'div-gpt-ad-1772125507973-0').addService(googletag.pubads());
+                googletag.pubads().enableSingleRequest();
+                googletag.enableServices();
+              });
+            `,
+          }}
+        />
       </head>
       {/*
         suppressHydrationWarning on <body> is needed because browser extensions
