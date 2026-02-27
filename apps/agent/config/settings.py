@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     video_worker_url: str = Field(default="http://localhost:5001", description="Self-hosted video worker base URL (VIDEO_WORKER_URL env var)")
     video_model: str = Field(default="fal-ai/ltx-video", description="fal.ai model ID for video generation")
     video_clips: int = Field(default=8, description="Number of 8-second clips to generate per video (8 × 8s = 64s total)")
+    video_concurrency: int = Field(default=3, description="Max concurrent video generations in post-publish (VIDEO_CONCURRENCY env var)")
 
     @model_validator(mode="after")
     def _validate_required(self) -> "Settings":

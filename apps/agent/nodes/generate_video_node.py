@@ -379,9 +379,12 @@ async def _generate_video_for_topic(
 # ── Batch entry point ──────────────────────────────────────────────────────────
 
 
-async def generate_videos_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+async def generate_videos_batch(
+    topics: List[Dict[str, Any]], *, max_concurrency: int | None = None
+) -> List[Dict[str, Any]]:
     """
     Process Tier 1 topics that don't already have a sourced video.
+    Runs eligible topics in parallel up to max_concurrency (default from settings).
     All other topics pass through unchanged.
     """
     if not topics:
@@ -389,6 +392,8 @@ async def generate_videos_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, 
 
     anthropic_client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     storage = StorageManager()
+    concurrency = max_concurrency if max_concurrency is not None else getattr(settings, "video_concurrency", 3)
+    concurrency = max(1, concurrency)
 
     eligible = [
         t for t in topics
@@ -398,23 +403,30 @@ async def generate_videos_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, 
     skip = [t for t in topics if t not in eligible]
 
     log.info(
-        "[generate_video] %d Tier 1 topics eligible for video generation, %d passing through",
-        len(eligible), len(skip),
+        "[generate_video] %d Tier 1 topics eligible (concurrency=%d), %d passing through",
+        len(eligible), concurrency, len(skip),
     )
 
     processed: List[Dict[str, Any]] = list(skip)
+    if not eligible:
+        return processed
 
-    # Process eligible topics sequentially to avoid GPU/API saturation
-    for topic in eligible:
-        try:
-            result = await _generate_video_for_topic(topic, anthropic_client, storage)
-            processed.append(result)
-        except Exception as exc:
-            log.error(
-                "[generate_video] Unhandled exception for topic %s: %s\n%s",
-                topic.get("id"), exc, traceback.format_exc(),
-            )
-            processed.append(topic)
+    sem = asyncio.Semaphore(concurrency)
+
+    async def _run_one(topic: Dict[str, Any]) -> Dict[str, Any]:
+        async with sem:
+            try:
+                return await _generate_video_for_topic(topic, anthropic_client, storage)
+            except Exception as exc:
+                log.error(
+                    "[generate_video] Unhandled exception for topic %s: %s\n%s",
+                    topic.get("id"), exc, traceback.format_exc(),
+                )
+                return topic
+
+    results = await asyncio.gather(*[_run_one(t) for t in eligible], return_exceptions=True)
+    for i, r in enumerate(results):
+        processed.append(eligible[i] if isinstance(r, Exception) else r)
 
     videos_generated = sum(
         1 for t in processed

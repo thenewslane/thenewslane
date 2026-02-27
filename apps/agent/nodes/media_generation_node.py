@@ -817,14 +817,19 @@ class MediaGenerator:
 
     # ── Per-topic orchestrator ────────────────────────────────────────────────
 
-    async def process_topic_media(self, topic: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_topic_media(
+        self, topic: Dict[str, Any], *, thumbnails_only: bool = False
+    ) -> Dict[str, Any]:
         topic_id   = topic.get("id", "unknown")
         video_type = topic.get("video_type", "none")
 
-        log.info("Processing media for topic %s (video_type: %s)", topic_id, video_type)
+        log.info(
+            "Processing media for topic %s (video_type: %s, thumbnails_only=%s)",
+            topic_id, video_type, thumbnails_only,
+        )
 
         tasks: list[tuple[str, Any]] = [("thumbnail", self.generate_thumbnail(topic))]
-        if video_type == "ai_needed":
+        if not thumbnails_only and video_type == "ai_needed":
             tasks.append(("video", self.generate_ai_video(topic)))
 
         results: dict[str, Any] = {}
@@ -840,8 +845,8 @@ class MediaGenerator:
             else:
                 results.update(result)
 
-        # Tier 1 only: generate ElevenLabs voiceover + assemble Shorts video
-        if topic.get("viral_tier") == 1:
+        # Tier 1 only: generate ElevenLabs voiceover + assemble Shorts video (skip when thumbnails_only)
+        if not thumbnails_only and topic.get("viral_tier") == 1:
             instagram_url = await self._generate_shorts_video(
                 topic, str(topic_id), results.get("thumbnail_url")
             )
@@ -859,7 +864,9 @@ class MediaGenerator:
 # ── Batch entry point ──────────────────────────────────────────────────────────
 
 
-async def generate_media_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+async def generate_media_batch(
+    topics: List[Dict[str, Any]], *, thumbnails_only: bool = False
+) -> List[Dict[str, Any]]:
     if not topics:
         return []
 
@@ -867,7 +874,10 @@ async def generate_media_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, A
     hitl_initial = getattr(settings, "media_hitl_initial_delay_sec", 2.0)
     hitl_min = getattr(settings, "media_hitl_delay_min", 1.0)
     hitl_max = getattr(settings, "media_hitl_delay_max", 5.0)
-    log.info("generate_media_batch: %d topics (concurrency=%d, HITL initial=%.1fs, between=%.1f–%.1fs)", len(topics), concurrency, hitl_initial, hitl_min, hitl_max)
+    log.info(
+        "generate_media_batch: %d topics (concurrency=%d, thumbnails_only=%s, HITL initial=%.1fs)",
+        len(topics), concurrency, thumbnails_only, hitl_initial,
+    )
     if hitl_initial > 0:
         log.info("[media] HITL initial delay %.1fs before first task", hitl_initial)
         await asyncio.sleep(hitl_initial)
@@ -879,7 +889,7 @@ async def generate_media_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, A
                 delay = random.uniform(hitl_min, hitl_max)
                 await asyncio.sleep(delay)
             async with sem:
-                return await gen.process_topic_media(t)
+                return await gen.process_topic_media(t, thumbnails_only=thumbnails_only)
 
         results = await asyncio.gather(*[_process(i, t) for i, t in enumerate(topics)], return_exceptions=True)
 
@@ -898,16 +908,20 @@ async def generate_media_batch(topics: List[Dict[str, Any]]) -> List[Dict[str, A
 
 
 def generate_media(state: Dict[str, Any]) -> Dict[str, Any]:
-    """LangGraph node — generate thumbnails and AI videos."""
+    """LangGraph node — generate thumbnails and optionally AI videos (when not thumbnails_only)."""
     batch_id = state["batch_id"]
     topics   = state.get("topics", [])
+    thumbnails_only = state.get("thumbnails_only", False)
 
-    log.info("generate_media: %d topics  batch_id=%s", len(topics), batch_id)
+    log.info(
+        "generate_media: %d topics  batch_id=%s  thumbnails_only=%s",
+        len(topics), batch_id, thumbnails_only,
+    )
     if not topics:
         return {"topics": topics}
 
     try:
-        enriched = asyncio.run(generate_media_batch(topics))
+        enriched = asyncio.run(generate_media_batch(topics, thumbnails_only=thumbnails_only))
         thumbs   = sum(1 for t in enriched if t.get("thumbnail_url"))
         videos   = sum(1 for t in enriched if t.get("video_url"))
         log.info("generate_media: %d thumbnails, %d videos", thumbs, videos)

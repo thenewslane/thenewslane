@@ -111,7 +111,7 @@ def run_pipeline(
     }
 
     try:
-        print("Pipeline running: collect → predict_viral → filter → classify → generate_content → source_video → generate_media → publish", flush=True)
+        print("Pipeline running: collect → … → generate_content → source_video → generate_media (thumbnails) → publish → post_publish_video → fact_check", flush=True)
         final_state = pipeline.invoke(initial_state)
 
         published = len(final_state.get("published_topic_ids", [])) + len(final_state.get("fact_checked_topic_ids", []))

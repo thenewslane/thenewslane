@@ -2,8 +2,12 @@
 graph.py — LangGraph StateGraph for the theNewslane AI pipeline.
 
 Node sequence:
-  collect → predict_viral → filter_brand_safety → classify →
-  generate_content → source_video → generate_media → publish → fact_check
+  collect → predict_viral → filter_brand_safety → classify → filter_category
+  → generate_content → source_video → generate_media (thumbnails only)
+  → publish → post_publish_video (parallel video/audio) → fact_check
+
+Content is published before video/audio generation; post_publish_video updates
+the DB so the article page shows video when ready.
 
 Conditional edge after predict_viral:
   If no topics score ≥ 2 → END (logged, pipeline completes gracefully).
@@ -289,7 +293,7 @@ def _node_generate_content(state: AgentState) -> dict[str, Any]:
 
 
 def _node_source_video(state: AgentState) -> dict[str, Any]:
-    """Source existing YouTube/Vimeo videos for each topic."""
+    """Source existing YouTube/Vimeo videos for each topic; mark ai_needed when none found."""
     from nodes.video_sourcing_node import source_videos  # noqa: PLC0415
 
     topics = state.get("content_generated_topics", [])
@@ -300,8 +304,8 @@ def _node_source_video(state: AgentState) -> dict[str, Any]:
         sourced = result.get("topics", [])
         found = sum(1 for t in sourced if t.get("video_type") in ("youtube", "vimeo"))
         log.info("[source_video] %d/%d topics have existing video", found, len(topics))
-        # Store in media_generated_topics so generate_media picks them up
-        return {"media_generated_topics": sourced}
+        # Thumbnails-only before publish; video generation runs post-publish in parallel
+        return {"media_generated_topics": sourced, "_thumbnails_only_media": True}
     except Exception as exc:
         msg = f"source_video: {exc}\n{traceback.format_exc()}"
         log.error(msg)
@@ -336,13 +340,18 @@ def _node_generate_video(state: AgentState) -> dict[str, Any]:
 
 
 def _node_generate_media(state: AgentState) -> dict[str, Any]:
-    """Generate thumbnails (Flux) and AI videos (Kling) via Replicate."""
+    """Generate thumbnails only before publish; video/audio run post-publish in parallel."""
     from nodes.media_generation_node import generate_media  # noqa: PLC0415
 
     topics = state.get("media_generated_topics", [])
-    log.info("[generate_media] generating media for %d topics", len(topics))
+    thumbnails_only = state.get("_thumbnails_only_media", False)
+    log.info("[generate_media] generating media for %d topics (thumbnails_only=%s)", len(topics), thumbnails_only)
     try:
-        inner = {"batch_id": state["batch_id"], "topics": topics}
+        inner = {
+            "batch_id": state["batch_id"],
+            "topics": topics,
+            "thumbnails_only": thumbnails_only,
+        }
         result = generate_media(inner)
         with_media = result.get("topics", [])
         ok = sum(1 for t in with_media if t.get("media_generated"))
@@ -554,6 +563,101 @@ def _node_publish(state: AgentState) -> dict[str, Any]:
     return result
 
 
+# ── Node: post_publish_video ───────────────────────────────────────────────────
+
+
+async def _post_publish_video_async(
+    published_topic_ids: list[str],
+    media_generated_topics: list[dict[str, Any]],
+) -> list[str]:
+    """
+    Run video generation after publish: Tier 1 (fal/self-hosted) and ai_needed (Kling)
+    in parallel; update DB with video_url / video_type. Returns list of topic ids that got video.
+    """
+    from nodes.generate_video_node import generate_videos_batch  # noqa: PLC0415
+    from nodes.media_generation_node import MediaGenerator  # noqa: PLC0415
+    from utils.supabase_client import db  # noqa: PLC0415
+
+    pub_set = frozenset(published_topic_ids)
+    published_topics = [t for t in media_generated_topics if str(t.get("id") or "") in pub_set]
+    if not published_topics:
+        log.info("[post_publish_video] no published topics to process")
+        return []
+
+    tier1 = [
+        t for t in published_topics
+        if t.get("viral_tier") == 1
+        and t.get("video_type") not in ("youtube", "vimeo", "kling_generated")
+    ]
+    # ai_needed for non–Tier-1 only (Tier 1 uses fal/self-hosted in tier1 above)
+    ai_needed = [
+        t for t in published_topics
+        if t.get("video_type") == "ai_needed" and t.get("viral_tier") != 1
+    ]
+
+    log.info(
+        "[post_publish_video] %d published topics: %d Tier 1 (parallel video), %d ai_needed (Kling)",
+        len(published_topics), len(tier1), len(ai_needed),
+    )
+    updated_ids: list[str] = []
+
+    # Tier 1: parallel video generation (updates DB inside generate_videos_batch)
+    if tier1:
+        try:
+            results = await generate_videos_batch(tier1)
+            for t in results:
+                if t.get("video_url") and t.get("video_type") == "kling_generated":
+                    updated_ids.append(str(t.get("id", "")))
+        except Exception as exc:
+            log.error("[post_publish_video] Tier 1 batch failed: %s", exc)
+
+    # ai_needed: Kling video per topic, then update DB
+    if ai_needed:
+        async with MediaGenerator() as gen:
+            tasks = [gen.generate_ai_video(t) for t in ai_needed]
+            done = await asyncio.gather(*tasks, return_exceptions=True)
+        for i, res in enumerate(done):
+            topic = ai_needed[i]
+            topic_id = str(topic.get("id", ""))
+            if isinstance(res, Exception):
+                log.error("[post_publish_video] ai_needed %s failed: %s", topic_id, res)
+                continue
+            video_url = res.get("video_url") or res.get("video_url_portrait")
+            if not video_url:
+                continue
+            try:
+                db.client.table("trending_topics").update(
+                    {"video_url": video_url, "video_type": "kling_generated"}
+                ).eq("id", topic_id).execute()
+                updated_ids.append(topic_id)
+                log.info("[post_publish_video] updated %s with video_url", topic_id)
+            except Exception as exc:
+                log.warning("[post_publish_video] DB update failed for %s: %s", topic_id, exc)
+
+    log.info("[post_publish_video] done — %d topics updated with video", len(updated_ids))
+    return updated_ids
+
+
+def _node_post_publish_video(state: AgentState) -> dict[str, Any]:
+    """
+    Run video (and audio) generation after content is published. Tier 1 and ai_needed
+    topics are processed in parallel; DB is updated so the article page shows video.
+    """
+    published_ids = state.get("published_topic_ids", [])
+    media_topics = state.get("media_generated_topics", [])
+    if not published_ids or not media_topics:
+        log.info("[post_publish_video] nothing to do")
+        return {}
+
+    try:
+        updated = asyncio.run(_post_publish_video_async(published_ids, media_topics))
+        return {"video_urls": {tid: "updated" for tid in updated}}
+    except Exception as exc:
+        msg = f"post_publish_video: {exc}\n{traceback.format_exc()}"
+        log.error(msg)
+        return {"errors": [msg]}
+
+
 # ── Node: fact_check ──────────────────────────────────────────────────────────
 
 
@@ -576,7 +680,16 @@ def _node_fact_check(state: AgentState) -> dict[str, Any]:
 
 
 def build_graph() -> Any:
-    """Build and compile the 10-node pipeline StateGraph (including generate_video + fact_check)."""
+    """
+    Build and compile the pipeline StateGraph.
+
+    Flow: collect → predict_viral → filter_brand_safety → classify → filter_category
+      → generate_content → source_video → generate_media (thumbnails only)
+      → publish → post_publish_video (parallel video/audio) → fact_check → END
+
+    Video and audio generation run after publish so content goes live first;
+    post_publish_video updates the DB so the article page shows video when ready.
+    """
     g = StateGraph(AgentState)
 
     g.add_node("collect",             _node_collect)
@@ -586,9 +699,9 @@ def build_graph() -> Any:
     g.add_node("filter_category",     _node_filter_category)
     g.add_node("generate_content",    _node_generate_content)
     g.add_node("source_video",        _node_source_video)
-    g.add_node("generate_video",      _node_generate_video)
     g.add_node("generate_media",      _node_generate_media)
     g.add_node("publish",             _node_publish)
+    g.add_node("post_publish_video",   _node_post_publish_video)
     g.add_node("fact_check",          _node_fact_check)
 
     g.set_entry_point("collect")
@@ -604,10 +717,10 @@ def build_graph() -> Any:
     g.add_edge("classify",            "filter_category")
     g.add_edge("filter_category",     "generate_content")
     g.add_edge("generate_content",    "source_video")
-    g.add_edge("source_video",        "generate_video")
-    g.add_edge("generate_video",      "generate_media")
+    g.add_edge("source_video",        "generate_media")
     g.add_edge("generate_media",      "publish")
-    g.add_edge("publish",             "fact_check")
+    g.add_edge("publish",             "post_publish_video")
+    g.add_edge("post_publish_video",  "fact_check")
     g.add_edge("fact_check",          END)
 
     return g.compile()
