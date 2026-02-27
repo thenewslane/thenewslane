@@ -107,27 +107,12 @@ export default function RootLayout({
         />
         {/* Author entity markup — establishes E-E-A-T signals sitewide */}
         <AuthorSchema />
-        {/* Google Publisher Tag (GPT) — header slot for 300x250 ATF */}
+        {/* Google Publisher Tag — base loader in <head> as requested */}
         <Script
-          id="gpt-header"
+          id="gpt-head-loader"
           src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
           strategy="beforeInteractive"
           crossOrigin="anonymous"
-        />
-        <Script
-          id="gpt-header-init"
-          strategy="beforeInteractive"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.googletag = window.googletag || {cmd: []};
-              googletag.cmd.push(function() {
-                googletag.defineSlot('/23173092177/newslane/Newslane_300x250_ATF', [300, 250], 'div-gpt-ad-1772125507973-0').addService(googletag.pubads());
-                googletag.pubads().enableSingleRequest();
-                googletag.enableServices();
-              });
-            `,
-          }}
         />
       </head>
       {/*

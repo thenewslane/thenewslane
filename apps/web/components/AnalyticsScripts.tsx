@@ -100,13 +100,7 @@ export function AnalyticsScripts({ consent, isMinor }: Props) {
         />
       )}
 
-      {/* ── Google Ad Manager GPT — always loaded, NPA mode when needed ─── */}
-      <Script
-        id="gpt-loader"
-        src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
-        strategy="afterInteractive"
-        crossOrigin="anonymous"
-      />
+      {/* ── Google Ad Manager GPT init — slots are defined in AdSlot ─── */}
       <Script
         id="gpt-init"
         strategy="afterInteractive"
@@ -115,7 +109,6 @@ export function AnalyticsScripts({ consent, isMinor }: Props) {
           __html: `
             window.googletag = window.googletag || { cmd: [] };
             googletag.cmd.push(function() {
-              googletag.defineSlot('/23173092177/newslane/Newslane_300x250_ATF', [300, 250], 'div-gpt-ad-1772035422456-0').addService(googletag.pubads());
               googletag.pubads().setRequestNonPersonalizedAds(${useNpa ? 1 : 0});
               ${ccpaOptOut ? "googletag.pubads().setPrivacySettingsForAll({ restrictDataProcessing: true });" : ''}
               googletag.pubads().enableSingleRequest();
