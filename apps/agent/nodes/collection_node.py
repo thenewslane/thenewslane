@@ -83,7 +83,7 @@ RSS_FEEDS = {
 # ── Google Trends RSS (multi-country) ─────────────────────────────────────────
 # Format: https://trends.google.com/trending/rss?geo=COUNTRY_CODE
 # Country codes: US (United States), AU (Australia), GB (United Kingdom), DE (Germany).
-# India (IN) removed from collection sources.
+# India (IN) not used in collection.
 GOOGLE_TRENDS_RSS = {
     "us_daily":   "https://trends.google.com/trending/rss?geo=US",
     "au_daily":   "https://trends.google.com/trending/rss?geo=AU",
@@ -466,12 +466,11 @@ async def _fetch_single_rss_feed(client: httpx.AsyncClient, feed_name: str, feed
 # ---------------------------------------------------------------------------
 
 
-# Countries to pull pytrends trending searches from
+# Countries to pull pytrends trending searches from (India removed from collection)
 _PYTRENDS_COUNTRIES = [
-    "united_states",
-    "united_kingdom",
-    "australia",
-    "india",
+    "united_states",   # US
+    "united_kingdom",  # GB
+    "australia",       # AU
 ]
 
 
