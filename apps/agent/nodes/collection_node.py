@@ -55,10 +55,6 @@ RSS_FEEDS = {
     # ── Australia ───────────────────────────────────────────────────────────
     "abc_australia":    "https://www.abc.net.au/news/feed/51120/rss.xml",
 
-    # ── India ───────────────────────────────────────────────────────────────
-    "the_hindu":        "https://www.thehindu.com/news/feeder/default.rss",
-    "times_of_india":   "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
-
     # ── Scandinavia (English-language editions) ─────────────────────────────
     "thelocal_se":      "https://www.thelocal.se/feed/",
     "thelocal_no":      "https://www.thelocal.no/feed/",
@@ -85,24 +81,25 @@ RSS_FEEDS = {
 }
 
 # ── Google Trends RSS (multi-country) ─────────────────────────────────────────
-# Note: some country feeds return 404 — handled gracefully per-feed.
+# Format: https://trends.google.com/trending/rss?geo=COUNTRY_CODE
+# Country codes: US (United States), AU (Australia), GB (United Kingdom), DE (Germany).
+# India (IN) removed from collection sources.
 GOOGLE_TRENDS_RSS = {
-    "us_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US",
-    "gb_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=GB",
-    "au_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=AU",
-    "in_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=IN",
-    "de_daily":   "https://trends.google.com/trends/trendingsearches/daily/rss?geo=DE",
+    "us_daily":   "https://trends.google.com/trending/rss?geo=US",
+    "au_daily":   "https://trends.google.com/trending/rss?geo=AU",
+    "gb_daily":   "https://trends.google.com/trending/rss?geo=GB",
+    "de_daily":   "https://trends.google.com/trending/rss?geo=DE",
 }
 
 # ── NewsAPI: countries + categories ───────────────────────────────────────────
 # Top-headlines accepts ONE country per request.  We fetch general+tech+science
 # for each country, then add global keyword searches for niche topics.
 NEWSAPI_COUNTRY_CATEGORIES: list[tuple[str, str]] = [
-    # (country, category)
+    # (country, category) — US, AU, GB, DE; India (in) removed.
     ("us", "general"), ("us", "technology"), ("us", "science"),
     ("gb", "general"), ("gb", "technology"), ("gb", "science"),
     ("au", "general"), ("au", "technology"),
-    ("in", "general"), ("in", "technology"),
+    ("de", "general"), ("de", "technology"),
     # Science/health (US only to keep total requests down)
     ("us", "health"), ("us", "entertainment"), ("us", "sports"),
 ]
@@ -114,7 +111,6 @@ NEWSAPI_KEYWORDS = [
     "wildlife nature conservation",
     "artificial intelligence technology",
     "renewable energy",
-    "India news",
     "Europe news",
     "Australia news",
     "Scandinavia Nordic news",
@@ -651,7 +647,7 @@ async def _collect_async(batch_id: str, geo: str = "US") -> list[RawTopic]:
 
     log.info(
         "collection: starting  batch_id=%s  timeout=%ds  grace=%ds  "
-        "countries=US,GB,AU,IN,DE,SE,NO  topics=tech,space,environment,wildlife",
+        "countries=US,AU,GB,DE  topics=tech,space,environment,wildlife",
         batch_id, timeout, grace,
     )
 

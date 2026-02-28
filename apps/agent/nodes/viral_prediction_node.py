@@ -26,9 +26,8 @@ from utils.supabase_client import db
 log = get_logger(__name__)
 
 # ── Feed-name → ISO country code ──────────────────────────────────────────────
+# India feeds (the_hindu, times_of_india) removed from collection; mappings removed.
 _FEED_COUNTRY: dict[str, str] = {
-    "times_of_india": "IN",
-    "the_hindu":      "IN",
     "bbc_uk":         "GB",
     "guardian_world": "GB",
     "guardian_tech":  "GB",
