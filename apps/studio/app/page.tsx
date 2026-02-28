@@ -761,10 +761,15 @@ function CategoriesPage() {
 
 // ─── RUN LOG PAGE ─────────────────────────────────────────────────────────────
 
+type BatchTopic = Pick<Topic, 'id' | 'title' | 'slug' | 'status' | 'viral_score' | 'published_at' | 'category_id'>;
+
 function RunLogPage() {
-  const [runs, setRuns]       = useState<RunLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [runs, setRuns]           = useState<RunLog[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [selectedRun, setSelectedRun] = useState<RunLog | null>(null);
+  const [batchTopics, setBatchTopics] = useState<BatchTopic[]>([]);
+  const [batchTopicsLoading, setBatchTopicsLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -781,17 +786,44 @@ function RunLogPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const openBatchDetail = useCallback(async (r: RunLog) => {
+    setSelectedRun(r);
+    setBatchTopics([]);
+    setBatchTopicsLoading(true);
+    const db = getSupabase();
+    const { data, error: err } = await db
+      .from('trending_topics')
+      .select('id, title, slug, status, viral_score, published_at, category_id')
+      .eq('batch_id', r.batch_id)
+      .order('published_at', { ascending: false, nullsFirst: false });
+    if (err) {
+      setBatchTopics([]);
+    } else {
+      setBatchTopics((data as BatchTopic[]) || []);
+    }
+    setBatchTopicsLoading(false);
+  }, []);
+
+  const closeBatchDetail = useCallback(() => {
+    setSelectedRun(null);
+    setBatchTopics([]);
+  }, []);
+
   const statusDot = (s: string) => {
     const color = s === 'completed' || s === 'partial' ? 'var(--green)' : s === 'failed' ? 'var(--red)' : s === 'running' ? 'var(--blue)' : 'var(--text3)';
     return <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: color, marginRight: 6 }} />;
   };
+
+  const siteUrl = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SITE_URL
+    ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+    : 'https://thenewslane.com';
 
   return (
     <div>
       <div className="section-header" style={{ marginBottom: 20 }}>
         <div>
           <div className="section-title">Run Log</div>
-          <div className="section-sub">Last 50 pipeline runs from Supabase runs_log</div>
+          <div className="section-sub">Last 50 pipeline runs from Supabase runs_log. Click a batch ID to see fetched, processed, and published data.</div>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={load} disabled={loading}>↺ Refresh</button>
       </div>
@@ -831,7 +863,30 @@ function RunLogPage() {
                               <span className={`badge badge-${r.status}`}>{r.status}</span>
                             </span>
                           </td>
-                          <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--accent2)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.batch_id}</td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() => openBatchDetail(r)}
+                              style={{
+                                fontFamily: 'monospace',
+                                fontSize: 11,
+                                color: 'var(--accent2)',
+                                maxWidth: 160,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 0,
+                                textAlign: 'left',
+                                width: '100%',
+                              }}
+                              title="View batch data"
+                            >
+                              {r.batch_id}
+                            </button>
+                          </td>
                           <td style={{ fontSize: 13 }}>{r.signals_collected ?? '—'}</td>
                           <td style={{ fontSize: 13 }}>{r.topics_processed ?? '—'}</td>
                           <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>{r.topics_published ?? '—'}</td>
@@ -850,6 +905,92 @@ function RunLogPage() {
                 </table>
               </div>
             )}
+        </div>
+      )}
+
+      {selectedRun && (
+        <div className="modal-overlay" onClick={closeBatchDetail}>
+          <div className="modal" style={{ width: 720, maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-title">Batch: {selectedRun.batch_id}</div>
+            <div className="modal-sub">
+              Run summary and topics (fetched → processed → published) for this pipeline run.
+            </div>
+
+            <div className="grid-3" style={{ marginBottom: 20 }}>
+              <div className="stat-card" style={{ padding: 12 }}>
+                <div className="stat-label">Data fetched</div>
+                <div className="stat-value" style={{ fontSize: 22 }}>{selectedRun.signals_collected ?? 0}</div>
+                <div className="stat-change">signals collected</div>
+              </div>
+              <div className="stat-card" style={{ padding: 12 }}>
+                <div className="stat-label">Processed</div>
+                <div className="stat-value" style={{ fontSize: 22 }}>{selectedRun.topics_processed ?? 0}</div>
+                <div className="stat-change">topics in pipeline</div>
+              </div>
+              <div className="stat-card" style={{ padding: 12 }}>
+                <div className="stat-label">Published</div>
+                <div className="stat-value" style={{ fontSize: 22, color: 'var(--green)' }}>{selectedRun.topics_published ?? 0}</div>
+                <div className="stat-change">live on site</div>
+              </div>
+            </div>
+
+            {selectedRun.error_message && (
+              <div className="error-box" style={{ marginBottom: 16 }}>
+                {selectedRun.error_message}
+              </div>
+            )}
+
+            <div className="section-title" style={{ marginBottom: 12 }}>Topics in this batch</div>
+            {batchTopicsLoading ? (
+              <Spinner />
+            ) : batchTopics.length === 0 ? (
+              <div className="empty" style={{ padding: 24 }}><div className="empty-text">No topics found for this batch.</div></div>
+            ) : (
+              <div className="table-wrap" style={{ maxHeight: 320, overflow: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Status</th>
+                      <th>Viral</th>
+                      <th>Published</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {batchTopics.map(t => (
+                      <tr key={t.id}>
+                        <td style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.title}>
+                          {t.title || '—'}
+                        </td>
+                        <td><StatusBadge status={t.status} /></td>
+                        <td style={{ fontSize: 12 }}>{t.viral_score != null ? t.viral_score : '—'}</td>
+                        <td style={{ fontSize: 12, color: 'var(--text3)' }}>
+                          {t.published_at ? new Date(t.published_at).toLocaleString() : '—'}
+                        </td>
+                        <td>
+                          {t.status === 'published' && t.slug && (
+                            <a
+                              href={`${siteUrl}/trending/${t.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ fontSize: 12, color: 'var(--accent2)' }}
+                            >
+                              View →
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={closeBatchDetail}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
