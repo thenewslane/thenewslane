@@ -40,20 +40,26 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
 
-      // Scripts: Next.js runtime chunks + GA4 GTM tag + GPT ad manager
+      // Scripts: Next.js runtime chunks + GA4 GTM tag + GPT ad manager +
+      //          Google Funding Choices (GDPR/CCPA consent CMP)
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
         ' https://www.googletagmanager.com' +
         ' https://www.google-analytics.com' +
         ' https://securepubads.g.doubleclick.net' +
-   	' https://static.cloudflareinsights.com' +
-        ' https://pagead2.googlesyndication.com',
+        ' https://static.cloudflareinsights.com' +
+        ' https://pagead2.googlesyndication.com' +
+        ' https://fundingchoicesmessages.google.com',
 
       // Frames: YouTube privacy-enhanced domain, Vimeo, Google ad iframes
+      //   cm.g.doubleclick.net       — GAM consent/sync iframe
+      //   *.safeframe.googlesyndication.com — GAM SafeFrame ad container
       "frame-src 'self'" +
         ' https://www.youtube-nocookie.com' +
         ' https://player.vimeo.com' +
         ' https://tpc.googlesyndication.com' +
-        ' https://www.google.com',
+        ' https://www.google.com' +
+        ' https://cm.g.doubleclick.net' +
+        ' https://*.safeframe.googlesyndication.com',
 
       // Images: supabase storage, YouTube/Vimeo thumbnails, favicons, data URIs
       "img-src 'self' data: blob: https:",
@@ -68,10 +74,12 @@ const securityHeaders = [
         ' https://securepubads.g.doubleclick.net' +
         ' https://pagead2.googlesyndication.com' +
         ' https://tpc.googlesyndication.com' +
-        ' https://ep1.adtrafficquality.google',
+        ' https://ep1.adtrafficquality.google' +
+        ' https://cm.g.doubleclick.net' +
+        ' https://fundingchoicesmessages.google.com',
 
-      // Styles: Next.js injects inline <style> tags
-      "style-src 'self' 'unsafe-inline'",
+      // Styles: Next.js inline <style> tags + Google Fonts CSS (layout uses Inter/Plus Jakarta Sans)
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 
       // Fonts: self-hosted, data URIs, Google Fonts (layout uses Inter with display=swap)
       "font-src 'self' data: https://fonts.gstatic.com",

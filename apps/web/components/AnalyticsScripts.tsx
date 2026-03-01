@@ -101,6 +101,9 @@ export function AnalyticsScripts({ consent, isMinor }: Props) {
       )}
 
       {/* ── Google Ad Manager GPT init — slots are defined in AdSlot ─── */}
+      {/* setPrivacySettings() is the unified replacement for the deprecated
+          setRequestNonPersonalizedAds / setTagForChildDirectedTreatment /
+          setTagForUnderAgeOfConsent / setTagForUnderAgeOfConsent APIs. */}
       <Script
         id="gpt-init"
         strategy="afterInteractive"
@@ -109,8 +112,11 @@ export function AnalyticsScripts({ consent, isMinor }: Props) {
           __html: `
             window.googletag = window.googletag || { cmd: [] };
             googletag.cmd.push(function() {
-              googletag.pubads().setRequestNonPersonalizedAds(${useNpa ? 1 : 0});
-              ${ccpaOptOut ? "googletag.pubads().setPrivacySettingsForAll({ restrictDataProcessing: true });" : ''}
+              googletag.pubads().setPrivacySettings({
+                nonPersonalizedAds:       ${useNpa},
+                restrictDataProcessing:   ${ccpaOptOut},
+                childDirectedTreatment:   ${isMinor},
+              });
               googletag.pubads().enableSingleRequest();
               googletag.enableServices();
             });

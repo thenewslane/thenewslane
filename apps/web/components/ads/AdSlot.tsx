@@ -13,7 +13,7 @@
  *   id        — optional DOM id override
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useConsent }     from '@/app/providers';
 import { useAdManager }   from './AdManager';
 
@@ -56,8 +56,14 @@ export function AdSlot({ unitPath, sizes, targeting = {}, id }: AdSlotProps) {
   const slotRef              = useRef<GoogleSlot | null>(null);
   const divId                = id ?? `gam-${unitPath.replace(/\//g, '-').replace(/^-/, '')}`;
 
+  // Defer all ad rendering until after client hydration to avoid React error #418/#425.
+  // Server and the initial client render both emit the placeholder; after mount the
+  // component switches to the live ad slot based on the actual consent state.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   // Advertising is allowed only with explicit consent and not for minors (COPPA)
-  const adsAllowed = Boolean(consent?.advertising) && !isMinor;
+  const adsAllowed = mounted && Boolean(consent?.advertising) && !isMinor;
 
   useEffect(() => {
     if (!gptReady || !adsAllowed) return;
