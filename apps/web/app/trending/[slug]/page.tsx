@@ -439,12 +439,7 @@ export default async function ArticlePage({
           )}
         </div>
 
-        {/* ── Share bar ── */}
-        <div style={{ marginBottom: 'var(--spacing-6)' }}>
-          <ShareBar url={articleUrl} title={topic.title} />
-        </div>
-
-        {/* ── Hero thumbnail (LCP candidate): priority load, explicit size for CLS ── */}
+        {/* ── Hero thumbnail (LCP): above ShareBar so it paints first; priority + fetchPriority ── */}
         {!hasVideo && topic.thumbnail_url && (
           <div
             style={{
@@ -462,11 +457,17 @@ export default async function ArticlePage({
               alt={topic.title}
               fill
               priority
+              fetchPriority="high"
               sizes="(max-width: 800px) 100vw, 800px"
               style={{ objectFit: 'cover' }}
             />
           </div>
         )}
+
+        {/* ── Share bar ── */}
+        <div style={{ marginBottom: 'var(--spacing-6)' }}>
+          <ShareBar url={articleUrl} title={topic.title} />
+        </div>
 
         {/* ── Summary lead ── */}
         {displaySummary && (

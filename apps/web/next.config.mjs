@@ -58,13 +58,17 @@ const securityHeaders = [
       // Images: supabase storage, YouTube/Vimeo thumbnails, favicons, data URIs
       "img-src 'self' data: blob: https:",
 
-      // Fetch/XHR: Supabase API, GA4 beacon, analytics
+      // Fetch/XHR: Supabase API, GA4 beacon, analytics, Google Ad Manager (GPT)
       "connect-src 'self'" +
         (supabaseHostname ? ` https://${supabaseHostname}` : '') +
         ' https://www.google-analytics.com' +
         ' https://analytics.google.com' +
         ' https://region1.google-analytics.com' +
-	' https://cloudflareinsights.com',
+        ' https://cloudflareinsights.com' +
+        ' https://securepubads.g.doubleclick.net' +
+        ' https://pagead2.googlesyndication.com' +
+        ' https://tpc.googlesyndication.com' +
+        ' https://ep1.adtrafficquality.google',
 
       // Styles: Next.js injects inline <style> tags
       "style-src 'self' 'unsafe-inline'",

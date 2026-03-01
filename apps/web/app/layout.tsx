@@ -91,7 +91,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Web fonts with font-display: swap for Core Web Vitals (avoids FOIT) */}
+        {/* Web fonts: preload CSS to start fetch early; display=swap avoids FOIT */}
         <link
           rel="preconnect"
           href="https://fonts.googleapis.com"
@@ -102,16 +102,29 @@ export default function RootLayout({
           crossOrigin=""
         />
         <link
+          rel="preload"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+          as="style"
+        />
+        <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+          media="print"
+          onLoad="this.media='all'"
         />
+        <noscript>
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+          />
+        </noscript>
         {/* Author entity markup — establishes E-E-A-T signals sitewide */}
         <AuthorSchema />
-        {/* Google Publisher Tag — base loader in <head> as requested */}
+        {/* Google Publisher Tag — load after interactive to avoid blocking LCP */}
         <Script
           id="gpt-head-loader"
           src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
           crossOrigin="anonymous"
         />
       </head>
