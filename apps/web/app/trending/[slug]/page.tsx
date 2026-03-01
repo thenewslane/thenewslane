@@ -362,7 +362,7 @@ export default async function ArticlePage({
           padding:   'var(--spacing-4) var(--spacing-4) var(--spacing-16)',
         }}
       >
-        {/* ── Breadcrumb (Home › Category only; no slug/title) ── */}
+        {/* ── Breadcrumb (Home › Category) ── */}
         <nav
           aria-label="Breadcrumb"
           style={{
@@ -398,6 +398,44 @@ export default async function ArticlePage({
             </>
           ) : null}
         </nav>
+
+        {/* ── Slug (path) — then hero image below it ── */}
+        <p
+          style={{
+            margin:        '0 0 var(--spacing-4)',
+            fontSize:      '12px',
+            fontFamily:    'var(--font-body)',
+            color:         'var(--color-text-muted-light)',
+            letterSpacing: '0.02em',
+          }}
+        >
+          trending / {topic.slug}
+        </p>
+
+        {/* ── Hero thumbnail: below slug; priority + fetchPriority for LCP ── */}
+        {!hasVideo && topic.thumbnail_url && (
+          <div
+            style={{
+              position:     'relative',
+              marginBottom: 'var(--spacing-6)',
+              borderRadius: 'var(--radius-large)',
+              overflow:     'hidden',
+              width:        '100%',
+              aspectRatio:  '16 / 9',
+              minHeight:    200,
+            }}
+          >
+            <Image
+              src={topic.thumbnail_url}
+              alt={topic.title}
+              fill
+              priority
+              fetchPriority="high"
+              sizes="(max-width: 800px) 100vw, 800px"
+              style={{ objectFit: 'cover' }}
+            />
+          </div>
+        )}
 
         {/* ── Title ── */}
         <h1
@@ -438,31 +476,6 @@ export default async function ArticlePage({
             </p>
           )}
         </div>
-
-        {/* ── Hero thumbnail (LCP): above ShareBar so it paints first; priority + fetchPriority ── */}
-        {!hasVideo && topic.thumbnail_url && (
-          <div
-            style={{
-              position:     'relative',
-              marginBottom: 'var(--spacing-6)',
-              borderRadius: 'var(--radius-large)',
-              overflow:     'hidden',
-              width:        '100%',
-              aspectRatio:  '16 / 9',
-              minHeight:    200,
-            }}
-          >
-            <Image
-              src={topic.thumbnail_url}
-              alt={topic.title}
-              fill
-              priority
-              fetchPriority="high"
-              sizes="(max-width: 800px) 100vw, 800px"
-              style={{ objectFit: 'cover' }}
-            />
-          </div>
-        )}
 
         {/* ── Share bar ── */}
         <div style={{ marginBottom: 'var(--spacing-6)' }}>

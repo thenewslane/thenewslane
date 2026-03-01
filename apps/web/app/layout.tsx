@@ -88,9 +88,25 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Preconnect origins for faster image and CSS loading (Supabase = images; baseUrl = _next/static)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const supabaseOrigin = supabaseUrl.startsWith('http') ? new URL(supabaseUrl).origin : '';
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Preconnect: same origin for _next/static CSS/JS; Supabase for images */}
+        {baseUrl.startsWith('https') && (
+          <link rel="preconnect" href={baseUrl} />
+        )}
+        {supabaseOrigin && (
+          <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
+        )}
+        {/* DNS prefetch for common image CDNs (lighter than preconnect) */}
+        <link rel="dns-prefetch" href="https://i.ytimg.com" />
+        <link rel="dns-prefetch" href="https://img.youtube.com" />
+        <link rel="dns-prefetch" href="https://upload.wikimedia.org" />
+
         {/* Web fonts: preload CSS to start fetch early; display=swap avoids FOIT */}
         <link
           rel="preconnect"
