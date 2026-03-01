@@ -2,7 +2,7 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "cd ../.. && npm ci",
+  "installCommand": "cd ../.. && npm install --no-package-lock",
   "crons": [
     {
       "path": "/api/cron/run-pipeline",
