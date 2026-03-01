@@ -404,7 +404,7 @@ export default async function ArticlePage({
           ) : null}
         </nav>
 
-        {/* ── Slug (path): article path shown above hero image ── */}
+        {/* Slug (path): shown above hero image so image loads below slug per template */}
         <p
           data-slug-path
           style={{
@@ -418,7 +418,7 @@ export default async function ArticlePage({
           trending / {topic.slug}
         </p>
 
-        {/* ── Hero image: always below slug; priority + fetchPriority for LCP ── */}
+        {/* Hero image: placed below slug; priority + fetchPriority for LCP */}
         {!hasVideo && topic.thumbnail_url && (
           <div
             style={{

@@ -98,11 +98,17 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // ---------------------------------------------------------------------------
-  // Performance: reduce render-blocking CSS (inline critical CSS in HTML)
+  // Performance: inline critical CSS (reduces render-blocking _next/static/css)
   // https://nextjs.org/docs/app/api-reference/config/next-config-js/inlineCss
   // ---------------------------------------------------------------------------
   experimental: {
     inlineCss: true,
+    // Tree-shake workspace packages so fewer bytes and less CSS
+    optimizePackageImports: [
+      '@platform/ui',
+      '@platform/theme',
+      '@platform/types',
+    ],
   },
 
   // ---------------------------------------------------------------------------
