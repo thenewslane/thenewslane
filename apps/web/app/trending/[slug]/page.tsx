@@ -399,8 +399,9 @@ export default async function ArticlePage({
           ) : null}
         </nav>
 
-        {/* ── Slug (path) — then hero image below it ── */}
+        {/* ── Slug (path): article path shown above hero image ── */}
         <p
+          data-slug-path
           style={{
             margin:        '0 0 var(--spacing-4)',
             fontSize:      '12px',
@@ -412,7 +413,7 @@ export default async function ArticlePage({
           trending / {topic.slug}
         </p>
 
-        {/* ── Hero thumbnail: below slug; priority + fetchPriority for LCP ── */}
+        {/* ── Hero image: always below slug; priority + fetchPriority for LCP ── */}
         {!hasVideo && topic.thumbnail_url && (
           <div
             style={{

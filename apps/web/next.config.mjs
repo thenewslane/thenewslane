@@ -90,6 +90,14 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // ---------------------------------------------------------------------------
+  // Performance: reduce render-blocking CSS (inline critical CSS in HTML)
+  // https://nextjs.org/docs/app/api-reference/config/next-config-js/inlineCss
+  // ---------------------------------------------------------------------------
+  experimental: {
+    inlineCss: true,
+  },
+
+  // ---------------------------------------------------------------------------
   // Workspace packages — Next.js transpiles them from TypeScript source.
   // ---------------------------------------------------------------------------
   transpilePackages: [

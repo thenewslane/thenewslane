@@ -88,24 +88,36 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Preconnect origins for faster image and CSS loading (Supabase = images; baseUrl = _next/static)
+  // Preconnect origins for faster image and CSS loading
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
   const supabaseOrigin = supabaseUrl.startsWith('http') ? new URL(supabaseUrl).origin : '';
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preconnect: same origin for _next/static CSS/JS; Supabase for images */}
-        {baseUrl.startsWith('https') && (
-          <link rel="preconnect" href={baseUrl} />
+        {/* Preconnect + dns-prefetch: same origin for _next/static CSS and JS (e.g. /_next/static/css/*.css) */}
+        {baseUrl.startsWith('http') && (
+          <>
+            <link rel="preconnect" href={baseUrl} />
+            <link rel="dns-prefetch" href={baseUrl} />
+          </>
         )}
+        {/* Preconnect + dns-prefetch: Supabase for article thumbnails and media */}
         {supabaseOrigin && (
-          <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
+          <>
+            <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
         )}
-        {/* DNS prefetch for common image CDNs (lighter than preconnect) */}
-        <link rel="dns-prefetch" href="https://i.ytimg.com" />
-        <link rel="dns-prefetch" href="https://img.youtube.com" />
-        <link rel="dns-prefetch" href="https://upload.wikimedia.org" />
+        {/* Preconnect: image CDNs used by article thumbnails and embeds */}
+        <link rel="preconnect" href="https://i.ytimg.com" crossOrigin="" />
+        <link rel="preconnect" href="https://img.youtube.com" crossOrigin="" />
+        <link rel="preconnect" href="https://upload.wikimedia.org" crossOrigin="" />
+        <link rel="preconnect" href="https://i.vimeocdn.com" crossOrigin="" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
+        <link rel="preconnect" href="https://images.pexels.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 
         {/* Web fonts: preload CSS to start fetch early; display=swap avoids FOIT */}
         <link
