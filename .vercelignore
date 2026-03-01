@@ -1,0 +1,13 @@
+# Exclude non-web app directories from upload
+apps/agent/
+apps/mobile/
+node_modules/
+apps/web/node_modules/
+packages/*/node_modules/
+apps/agent/.venv/
+docs/
+supabase/
+scripts/
+**/.git/
+**/dist/
+**/.cache/
