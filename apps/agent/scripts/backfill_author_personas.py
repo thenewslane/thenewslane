@@ -1,12 +1,12 @@
 """
-scripts/backfill_author_personas.py — One-time backfill of author personas.
+scripts/backfill_author_personas.py — Backfill author personas (bylines).
 
-Assigns author_name and author_honorific to all existing published topics
-where author_name IS NULL. Uses the same deterministic hash-based assignment
-as the content generation pipeline, so results are consistent.
+Assigns author_name and author_honorific from data/author_personas.json using
+the same deterministic hash-based assignment as the content generation pipeline.
 
-Run once after applying migration 003_author_persona.sql:
-    python scripts/backfill_author_personas.py [--dry-run]
+Run:
+    python scripts/backfill_author_personas.py [--dry-run]       # only NULL or "theNewslane Editorial"
+    python scripts/backfill_author_personas.py [--dry-run] --all   # all topics
 """
 
 from __future__ import annotations
@@ -39,31 +39,34 @@ def _assign(topic_id: str) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Backfill author personas for existing published topics.")
+    parser = argparse.ArgumentParser(description="Backfill author personas (bylines) from data/author_personas.json.")
     parser.add_argument("--dry-run", action="store_true", help="Preview without DB writes")
+    parser.add_argument("--all", action="store_true", help="Update all topics; default is only NULL or placeholder bylines")
     args = parser.parse_args()
 
     from supabase import create_client
     db = create_client(settings.supabase_url, settings.supabase_service_key)
 
-    # Target: rows where author_name is NULL or still holds the migration placeholder
-    all_rows: list[dict] = []
-    for filter_fn in [
-        lambda q: q.is_("author_name", "null"),
-        lambda q: q.eq("author_name", "theNewslane Editorial"),
-    ]:
-        page = filter_fn(
-            db.table("trending_topics").select("id, title")
-        ).execute().data or []
-        all_rows.extend(page)
-
-    # Deduplicate by id in case a row matched both filters
-    seen: set[str] = set()
-    rows: list[dict] = []
-    for r in all_rows:
-        if r["id"] not in seen:
-            seen.add(r["id"])
-            rows.append(r)
+    if args.all:
+        resp = db.table("trending_topics").select("id, title").execute()
+        rows = list(resp.data or [])
+    else:
+        # Target: rows where author_name is NULL or still holds the migration placeholder
+        all_rows: list[dict] = []
+        for filter_fn in [
+            lambda q: q.is_("author_name", "null"),
+            lambda q: q.eq("author_name", "theNewslane Editorial"),
+        ]:
+            page = filter_fn(
+                db.table("trending_topics").select("id, title")
+            ).execute().data or []
+            all_rows.extend(page)
+        seen: set[str] = set()
+        rows = []
+        for r in all_rows:
+            if r["id"] not in seen:
+                seen.add(r["id"])
+                rows.append(r)
 
     print(f"[backfill] {len(rows)} topics to assign personas to (dry_run={args.dry_run})", flush=True)
 
