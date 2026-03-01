@@ -137,16 +137,7 @@ export default function RootLayout({
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
-          media="print"
-          // eslint-disable-next-line react/no-unknown-property
-          onLoad={(e) => { (e.currentTarget as HTMLLinkElement).media = 'all'; }}
         />
-        <noscript>
-          <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
-          />
-        </noscript>
         {/* Author entity markup — establishes E-E-A-T signals sitewide */}
         <AuthorSchema />
         {/* Google Publisher Tag — load after interactive to avoid blocking LCP */}
