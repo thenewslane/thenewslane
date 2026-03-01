@@ -315,7 +315,12 @@ export default async function ArticlePage({
   const articleAuthorName = topic.author_name ?? defaultAuthorName;
   const articleHonorific  = topic.author_honorific ?? null;
 
-  const authorPageUrl = `${baseUrl}/about`;
+  // Derive per-author profile URL — known slugs get dedicated /author/[slug] pages;
+  // legacy "theNewslane Editorial" rows fall back to /about.
+  const _authorSlug = articleAuthorName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const authorPageUrl = ['jay', 'aadi', 'julie'].includes(_authorSlug)
+    ? `${baseUrl}/author/${_authorSlug}`
+    : `${baseUrl}/about`;
   const newsArticleSchema: Record<string, unknown> = {
     '@context':        'https://schema.org',
     '@type':           'NewsArticle',
@@ -458,6 +463,7 @@ export default async function ArticlePage({
             authorName={articleAuthorName}
             honorific={articleHonorific}
             publishedAt={publishedAt}
+            aboutHref={authorPageUrl}
           />
           {topic.updated_at && publishedAt && topic.updated_at > publishedAt && (
             <p
